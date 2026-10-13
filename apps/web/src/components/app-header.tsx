@@ -2,21 +2,21 @@
 
 import { BookOpen, LogOut } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { useSession } from "@/lib/session";
+import { authClient } from "@/lib/auth-client";
+import { clearApiToken, useSession } from "@/lib/session";
 import { site } from "@/lib/site";
-import { getSupabase } from "@/lib/supabase";
 
 export function AppHeader() {
   const session = useSession();
-  const router = useRouter();
 
   async function signOut() {
-    await getSupabase()?.auth.signOut();
-    router.replace("/login");
+    clearApiToken();
+    await authClient.signOut();
+    // Full reload drops every cached query and page state from the signed-in session.
+    window.location.assign("/login");
   }
 
   return (

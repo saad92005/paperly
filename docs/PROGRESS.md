@@ -3,25 +3,22 @@
 > Claude Code updates this file at the end of every phase. Newest entry on top.
 
 ## Current phase
-Phase 0 — Foundation (code complete; DoD waiting on Supabase project keys — see "Supabase setup")
+Phase 0 — Foundation (verified on a local test Postgres; switch `DATABASE_URL` to Neon to finish — see "Neon setup")
 
-## Supabase setup (one-time, ~5 min)
-1. Create a free project at supabase.com (region near you). Save the DB password.
-2. Copy `.env.example` → `.env` (`make setup` does it) and fill in:
-   - `SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL` = Project URL
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = publishable/anon key
-   - `SUPABASE_SERVICE_ROLE_KEY` = secret/service_role key (server only)
-   - `DATABASE_URL` = Connect → **Session pooler** URI, scheme changed to `postgresql+asyncpg://`
-3. `make db-migrate` — applies `supabase/migrations/`.
-4. Auth → URL configuration: Site URL `http://localhost:3000`, redirect URL `http://localhost:3000/library`.
-5. Auth → Providers: email (magic link) is on by default. Google needs a Google Cloud OAuth client (optional now).
-6. Auth → Sign In / Up → JWT signing keys: make sure asymmetric keys are used (the API verifies via JWKS).
+## Neon setup (one-time, ~3 min)
+1. Sign in at console.neon.tech → **New project** (Postgres 17, region near you).
+2. **Connect** → copy the **pooled** connection string. In `.env`, set
+   `DATABASE_URL=postgresql+asyncpg://…` (change only the scheme; keep `?sslmode=require` — if asyncpg rejects it, replace it with `?ssl=require`).
+3. `BETTER_AUTH_SECRET` is already generated in `.env`; keep it secret.
+4. `make db-migrate` → `make dev` → http://localhost:3000/login.
+5. Magic links print in the `make dev` console until `RESEND_API_KEY` is set. Google sign-in is optional (see `.env.example`).
 
 ## Log
 
 ### Phase 0 — Foundation · 2026-10-13
-**Built:** monorepo (pnpm workspace + uv); FastAPI app factory with request IDs, structlog JSON logs, CORS, single error handler (docs/04 error shape), `/health` (`db`/`worker` status), Supabase JWT verification via JWKS (ES256/RS256), `GET/PATCH /v1/me` (routers → services → repos); provider Protocols (`LLMProvider`, `EmbeddingProvider`, `Reranker`, `PdfParser`, `MetadataSource`, `BlobStore`) with deterministic stubs and a config-driven registry; first migration (enums, profiles, collections, papers, user_papers, jobs, signup trigger, RLS); Next.js 16 web app with Tailwind v4 + shadcn/ui mapped to the docs/05 tokens, light/dark toggle, Inter/Source Serif 4/JetBrains Mono, waking-server banner, login (Google + magic link), library empty state with loading/error/unconfigured states; OpenAPI → TS types in `packages/api-types`; Makefile; GitHub Actions (api lint/types/tests, web lint/types/tests, migrations applied to pgvector Postgres).
-**How to run/try:** `make setup` → fill `.env` (above) → `make db-migrate` → `make dev` → open http://localhost:3000/login, sign in by magic link → `/library` shows your empty library.
-**Tests:** API 12 passing (auth rejection cases, profile, error shape, request IDs, stubs); web 3 passing (API client). `make lint` clean (ruff, pyright strict, eslint, tsc).
-**Verified in browser:** `/`, `/login`, `/library` in light 1280px and dark 375px — no console errors; "Supabase isn't configured" state shown without keys.
-**Known gaps / follow-ups:** sign-in → `/v1/me` against a real project not yet verified (needs keys); CI not yet run on GitHub (no remote); `make e2e`/`eval` are placeholders until Phases 2–3; Windows needs GNU make (`winget install ezwinports.make`) and Git for Windows.
+**Built:** monorepo (pnpm workspace + uv); FastAPI app factory with request IDs, structlog JSON logs, CORS, one error handler (docs/04 error shape), `/health` (`db`/`worker`), JWT verification via JWKS (ES256, `aud`/`iss`/`exp` checked), `GET/PATCH /v1/me` (routers → services → repos); provider Protocols with deterministic stubs and a config registry; migrations in `db/migrations/` (Better Auth tables, enums, profiles, collections, papers, user_papers, jobs, profile trigger, RLS via `app_uid()`) with our own runner; Next.js 16 web app: Tailwind v4 + shadcn/ui on the docs/05 tokens, light/dark, Inter/Source Serif 4/JetBrains Mono, waking-server banner, **Better Auth** (email+password, magic link, optional Google) issuing 15-min JWTs for the API, library empty/loading/error states; OpenAPI → TS types (`packages/api-types`); Makefile; GitHub Actions (API, web, migrations-twice on pgvector Postgres).
+**How to run/try:** `make setup` → fill `.env` (Neon setup above) → `make db-migrate` → `make dev` → `/login` → "Use a password instead" → Create account → `/library`.
+**Tests:** API 13 passing (auth rejections incl. wrong issuer/audience/expired/foreign key, profile, error shape, request IDs); web 4 passing (API client incl. Bearer header). `make lint` clean (ruff, pyright strict, eslint, tsc).
+**Verified in browser (Playwright, local Postgres):** sign up with password → `/library` → `/v1/me` 200 with the trigger-created profile; sign out → magic link (from dev console) → signed in again → `/v1/me` 200. No console errors. Earlier: `/`, `/login`, `/library` light 1280 px and dark 375 px.
+**Known gaps / follow-ups:** not yet run against Neon (needs your project URL); CI not run on GitHub yet (no remote); PDF blob storage choice moves to Phase 1 (ADR-007); RLS is defense in depth only — the API connects as table owner, which bypasses it, until a restricted role is added (Phase 5 security pass); `make e2e`/`eval` are placeholders until Phases 2–3.
+**Fixed:** login page kept a spinning "Sign in" after sign-out because Next 16 preserves page state across navigation — form now resets on success and sign-out does a full reload.

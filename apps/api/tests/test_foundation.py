@@ -23,7 +23,8 @@ USER_ID = uuid.uuid4()
 def make_token(key: Any = KEY, **overrides: Any) -> str:
     claims = {
         "sub": str(USER_ID),
-        "aud": "authenticated",
+        "aud": "paperly-api",
+        "iss": "http://localhost:3000",
         "email": "a@example.com",
         "exp": int(time.time()) + 600,
         **overrides,
@@ -33,7 +34,9 @@ def make_token(key: Any = KEY, **overrides: Any) -> str:
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> httpx.AsyncClient:
-    app = create_app(Settings(_env_file=None, database_url="", supabase_url="http://sb.test"))  # pyright: ignore[reportCallIssue]
+    app = create_app(
+        Settings(_env_file=None, database_url="", web_base_url="http://localhost:3000")
+    )  # pyright: ignore[reportCallIssue]
     app.state.jwt_test_key = KEY.public_key()
     store: dict[str, Any] = {}
 
@@ -102,6 +105,7 @@ async def test_unknown_route_uses_error_shape(client: httpx.AsyncClient) -> None
         {"Authorization": f"Bearer {make_token(OTHER_KEY)}"},
         {"Authorization": f"Bearer {make_token(exp=int(time.time()) - 10)}"},
         {"Authorization": f"Bearer {make_token(aud='anon')}"},
+        {"Authorization": f"Bearer {make_token(iss='https://evil.example')}"},
     ],
 )
 async def test_me_rejects_bad_auth(client: httpx.AsyncClient, headers: dict[str, str]) -> None:

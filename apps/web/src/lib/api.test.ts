@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError, apiFetch } from "@/lib/api";
 
+vi.mock("@/lib/session", () => ({ apiToken: async () => "test-token" }));
+
 afterEach(() => vi.unstubAllGlobals());
 
 describe("apiFetch", () => {
@@ -11,6 +13,16 @@ describe("apiFetch", () => {
       vi.fn(async () => new Response(JSON.stringify({ status: "ok" }), { status: 200 })),
     );
     await expect(apiFetch<{ status: string }>("/health")).resolves.toEqual({ status: "ok" });
+  });
+
+  it("sends the API token as a Bearer header", async () => {
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response("{}", { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await apiFetch("/v1/me");
+    const headers = new Headers(fetchMock.mock.calls[0][1]?.headers);
+    expect(headers.get("Authorization")).toBe("Bearer test-token");
   });
 
   it("maps the API error shape to ApiError", async () => {

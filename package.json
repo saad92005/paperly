@@ -9,7 +9,6 @@
     "test:web": "pnpm --filter web test"
   },
   "devDependencies": {
-    "concurrently": "^10.0.6",
-    "supabase": "^2.120.0"
+    "concurrently": "^10.0.6"
   }
 }

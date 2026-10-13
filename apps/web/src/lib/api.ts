@@ -1,7 +1,7 @@
 import type { components } from "@paperly/api-types";
 
 import { env } from "@/lib/env";
-import { currentAccessToken } from "@/lib/session";
+import { apiToken } from "@/lib/session";
 
 export type Profile = components["schemas"]["Profile"];
 export type ProfileUpdate = components["schemas"]["ProfileUpdate"];
@@ -23,10 +23,16 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function apiFetch<T>(
+  path: string,
+  init: RequestInit = {},
+  { auth = true }: { auth?: boolean } = {},
+): Promise<T> {
   const headers = new Headers(init.headers);
-  const token = currentAccessToken();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (auth) {
+    const token = await apiToken();
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+  }
   if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
 
   let res: Response;
@@ -49,7 +55,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
 }
 
 export const api = {
-  health: () => apiFetch<Health>("/health"),
+  health: () => apiFetch<Health>("/health", {}, { auth: false }),
   me: () => apiFetch<Profile>("/v1/me"),
   updateMe: (patch: ProfileUpdate) =>
     apiFetch<Profile>("/v1/me", { method: "PATCH", body: JSON.stringify(patch) }),

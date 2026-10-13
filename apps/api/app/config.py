@@ -22,10 +22,10 @@ class Settings(BaseSettings):
 
     # Database / auth
     database_url: str = ""
-    supabase_url: str = ""
-    supabase_jwks_url: str = ""
-    supabase_jwt_audience: str = "authenticated"
-    supabase_service_role_key: str = ""
+    # Better Auth (runs in the web app) signs short-lived JWTs; we verify them via its JWKS.
+    auth_jwks_url: str = ""
+    auth_jwt_issuer: str = ""
+    auth_jwt_audience: str = "paperly-api"
 
     # Providers (order = fallback order)
     route_chat: str = "groq,gemini,openrouter"
@@ -65,9 +65,11 @@ class Settings(BaseSettings):
 
     @property
     def jwks_url(self) -> str:
-        if self.supabase_jwks_url:
-            return self.supabase_jwks_url
-        return f"{self.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
+        return self.auth_jwks_url or f"{self.web_base_url.rstrip('/')}/api/auth/jwks"
+
+    @property
+    def jwt_issuer(self) -> str:
+        return self.auth_jwt_issuer or self.web_base_url.rstrip("/")
 
 
 @lru_cache

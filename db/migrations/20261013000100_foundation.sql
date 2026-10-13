@@ -1,7 +1,13 @@
 -- Phase 0 foundation: profiles, collections, papers, user_papers, jobs (docs/03-DATA-MODEL.md).
 
-create extension if not exists vector with schema extensions;
-create extension if not exists pg_trgm with schema extensions;
+create extension if not exists vector;
+create extension if not exists pg_trgm;
+
+-- The API runs `set local app.user_id = '<uuid>'` per request; RLS policies read it via app_uid().
+-- (Replaces Supabase's auth.uid(); see ADR-007.)
+create function app_uid() returns uuid language sql stable as $$
+  select nullif(current_setting('app.user_id', true), '')::uuid
+$$;
 
 create type paper_source as enum ('upload','arxiv','doi','url');
 create type paper_visibility as enum ('private','public_cache');
@@ -10,7 +16,7 @@ create type chunk_kind as enum ('abstract','body','caption','table','equation','
 create type job_status as enum ('queued','running','succeeded','failed','cancelled');
 
 create table profiles (
-  id            uuid primary key references auth.users(id) on delete cascade,
+  id            uuid primary key references "user"(id) on delete cascade,
   display_name  text,
   locale        text not null default 'en',
   explain_level text not null default 'student' check (explain_level in ('eli5','student','expert')),
@@ -55,7 +61,7 @@ create table papers (
 create unique index papers_public_arxiv_uq on papers(arxiv_id) where visibility = 'public_cache' and arxiv_id is not null;
 create unique index papers_public_doi_uq   on papers(lower(doi)) where visibility = 'public_cache' and doi is not null;
 create unique index papers_private_hash_uq on papers(owner_id, sha256) where visibility = 'private';
-create index papers_title_trgm on papers using gin (title extensions.gin_trgm_ops);
+create index papers_title_trgm on papers using gin (title gin_trgm_ops);
 
 create table user_papers (
   user_id       uuid not null references profiles(id) on delete cascade,
@@ -88,20 +94,19 @@ create table jobs (
 );
 create index jobs_ready_idx on jobs(priority, run_after) where status = 'queued';
 
--- Create a profile for every new auth user.
-create function public.handle_new_user() returns trigger
-language plpgsql security definer set search_path = '' as $$
+-- Create a profile for every new Better Auth user.
+create function handle_new_user() returns trigger language plpgsql as $$
 begin
-  insert into public.profiles (id, display_name)
-  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name'))
+  insert into profiles (id, display_name) values (new.id, nullif(new.name, ''))
   on conflict (id) do nothing;
   return new;
 end;
 $$;
-create trigger on_auth_user_created after insert on auth.users
-  for each row execute function public.handle_new_user();
+create trigger on_user_created after insert on "user"
+  for each row execute function handle_new_user();
 
--- Row-level security (defense in depth; the API also enforces ownership).
+-- Row-level security (defense in depth; the API also enforces ownership in services/).
+-- Note: the table owner bypasses RLS; policies apply to any non-owner role that connects.
 alter table profiles    enable row level security;
 alter table collections enable row level security;
 alter table papers      enable row level security;
@@ -109,12 +114,12 @@ alter table user_papers enable row level security;
 alter table jobs        enable row level security;  -- no policies: no client access
 
 create policy profiles_self on profiles for all
-  using (id = (select auth.uid())) with check (id = (select auth.uid()));
+  using (id = (select app_uid())) with check (id = (select app_uid()));
 create policy collections_owner on collections for all
-  using (owner_id = (select auth.uid())) with check (owner_id = (select auth.uid()));
+  using (owner_id = (select app_uid())) with check (owner_id = (select app_uid()));
 create policy papers_read on papers for select
-  using (visibility = 'public_cache' or owner_id = (select auth.uid()));
+  using (visibility = 'public_cache' or owner_id = (select app_uid()));
 create policy papers_write on papers for all
-  using (owner_id = (select auth.uid())) with check (owner_id = (select auth.uid()));
+  using (owner_id = (select app_uid())) with check (owner_id = (select app_uid()));
 create policy user_papers_owner on user_papers for all
-  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+  using (user_id = (select app_uid())) with check (user_id = (select app_uid()));

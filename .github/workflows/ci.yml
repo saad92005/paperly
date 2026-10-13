@@ -51,15 +51,15 @@ jobs:
         ports: ["5432:5432"]
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
-    env:
-      PGPASSWORD: postgres
     steps:
       - uses: actions/checkout@v4
-      - name: Stub the Supabase auth schema
-        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/ci/supabase_stub.sql
-      - name: Apply migrations
+      - uses: astral-sh/setup-uv@v6
+      - name: Apply migrations twice (second run must be a no-op)
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/postgres
+          PYTHONPATH: .
         run: |
-          for f in supabase/migrations/*.sql; do
-            echo "applying $f"
-            psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f "$f"
-          done
+          uv sync --frozen
+          uv run python scripts/migrate.py
+          uv run python scripts/migrate.py | grep -q "up to date"

@@ -1,5 +1,7 @@
 # CLAUDE.md — working rules for Paperly
 
+> **Stack change (ADR-007):** Neon Postgres + Better Auth replace Supabase (DB, Auth). Where other docs say Supabase, read: Neon for the database, Better Auth (in `apps/web`, JWT verified by the API via JWKS) for auth; file storage is decided in Phase 1.
+
 Paperly is an open-source AI research-paper copilot: import papers, read them in a PDF reader, ask questions, compare papers — every claim cited to the exact sentence. Built on a $0 stack.
 
 ## Repo layout
@@ -11,7 +13,7 @@ paperly/
 │  └─ api/              FastAPI (Python 3.12, uv) + in-process job worker
 ├─ packages/
 │  └─ api-types/        TypeScript types generated from the FastAPI OpenAPI schema
-├─ supabase/
+├─ db/
 │  └─ migrations/       Plain SQL migrations (single source of truth for the DB)
 ├─ eval/                Golden dataset, eval runner, reports
 ├─ infra/               docker-compose.selfhost.yml (GROBID, Ollama — optional)
@@ -26,8 +28,9 @@ paperly/
 | Command | What it does |
 |---|---|
 | `make setup` | Install deps (uv sync, pnpm install), copy `.env.example` → `.env` if missing |
-| `make dev` | `supabase start` + API (uvicorn --reload) + web (next dev) |
-| `make db-reset` | Re-apply all migrations to the local Supabase DB and seed |
+| `make dev` | API (uvicorn --reload) + web (next dev, includes Better Auth) against Neon |
+| `make db-migrate` | Apply new files in `db/migrations/` to `DATABASE_URL` (`make db-status` lists pending) |
+| `make db-reset` | Prints how to reset a Neon branch, then `make db-migrate` |
 | `make test` | API pytest + web vitest |
 | `make e2e` | Playwright tests against the dev stack |
 | `make lint` | ruff + pyright (api), eslint + tsc --noEmit (web) |
@@ -54,7 +57,7 @@ paperly/
 - Every screen ships its empty, loading, error and offline/waking states.
 
 **Database**
-- Change schema only through a new file in `supabase/migrations/` (timestamped). Never edit an applied migration.
+- Change schema only through a new file in `db/migrations/` (timestamped). Never edit an applied migration.
 - RLS enabled on every user-owned table even though the API uses a server key (defense in depth).
 
 **Git**

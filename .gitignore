@@ -19,9 +19,6 @@ out/
 next-env.d.ts
 coverage/
 
-# Supabase CLI
-supabase/.temp/
-supabase/.branches/
 
 # Data and models
 *.pdf

@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { AppHeader } from "@/components/app-header";
-import { SetupNotice } from "@/components/setup-notice";
 import { Button } from "@/components/ui/button";
 import { ApiError, api } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -31,10 +30,8 @@ export default function LibraryPage() {
     <>
       <AppHeader />
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-10">
-        {session.status === "unconfigured" ? (
-          <div className="flex justify-center">
-            <SetupNotice />
-          </div>
+        {session.status === "error" ? (
+          <LoadError error={new Error(session.message)} onRetry={() => window.location.reload()} />
         ) : !signedIn || me.isPending ? (
           <LibrarySkeleton />
         ) : me.isError ? (

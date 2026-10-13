@@ -1,4 +1,4 @@
-"""Supabase JWT verification via the project's JWKS (asymmetric signing keys)."""
+"""Verify Better Auth JWTs (issued by the web app's jwt plugin) against its JWKS."""
 
 from dataclasses import dataclass
 from typing import Annotated, Any
@@ -38,8 +38,9 @@ def decode_token(token: str, settings: Settings, key: Any = None) -> dict[str, A
             token,
             signing_key,
             algorithms=_ALGORITHMS,
-            audience=settings.supabase_jwt_audience,
-            options={"require": ["exp", "sub", "aud"]},
+            audience=settings.auth_jwt_audience,
+            issuer=settings.jwt_issuer,
+            options={"require": ["exp", "sub", "aud", "iss"]},
         )
     except jwt.PyJWTError as exc:
         raise Unauthorized("Your session is invalid or expired. Sign in again.") from exc

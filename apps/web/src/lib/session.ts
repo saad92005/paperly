@@ -1,57 +1,49 @@
 "use client";
 
-import type { Session } from "@supabase/supabase-js";
-import { useSyncExternalStore } from "react";
-
-import { getSupabase } from "@/lib/supabase";
+import { authClient } from "@/lib/auth-client";
 
 export type SessionState =
   | { status: "loading" }
-  | { status: "unconfigured" }
+  | { status: "error"; message: string }
   | { status: "signed-out" }
-  | { status: "signed-in"; session: Session };
-
-const LOADING: SessionState = { status: "loading" };
-const UNCONFIGURED: SessionState = { status: "unconfigured" };
-const SIGNED_OUT: SessionState = { status: "signed-out" };
-
-let state: SessionState = LOADING;
-let started = false;
-const listeners = new Set<() => void>();
-
-function set(next: SessionState) {
-  state = next;
-  listeners.forEach((l) => l());
-}
-
-function start() {
-  if (started) return;
-  started = true;
-  const supabase = getSupabase();
-  if (!supabase) {
-    set(UNCONFIGURED);
-    return;
-  }
-  // onAuthStateChange fires INITIAL_SESSION once the stored session (or URL code) is processed.
-  supabase.auth.onAuthStateChange((_event, session) => {
-    set(session ? { status: "signed-in", session } : SIGNED_OUT);
-  });
-}
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  start();
-  return () => listeners.delete(listener);
-}
+  | { status: "signed-in"; user: { id: string; email: string; name: string | null } };
 
 export function useSession(): SessionState {
-  return useSyncExternalStore(
-    subscribe,
-    () => state,
-    () => LOADING,
-  );
+  const { data, isPending, error } = authClient.useSession();
+  if (isPending) return { status: "loading" };
+  if (error) return { status: "error", message: error.message ?? "Sign-in service unavailable." };
+  if (!data) return { status: "signed-out" };
+  return {
+    status: "signed-in",
+    user: { id: data.user.id, email: data.user.email, name: data.user.name || null },
+  };
 }
 
-export function currentAccessToken(): string | null {
-  return state.status === "signed-in" ? state.session.access_token : null;
+// Short-lived JWT for the FastAPI service; refreshed a minute before it expires.
+let cached: { token: string; exp: number } | null = null;
+const REFRESH_MARGIN_S = 60;
+
+function expOf(token: string): number {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof payload.exp === "number" ? payload.exp : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function apiToken(): Promise<string | null> {
+  const now = Date.now() / 1000;
+  if (cached && cached.exp - REFRESH_MARGIN_S > now) return cached.token;
+  const { data } = await authClient.token();
+  if (!data?.token) {
+    cached = null;
+    return null;
+  }
+  cached = { token: data.token, exp: expOf(data.token) };
+  return cached.token;
+}
+
+export function clearApiToken() {
+  cached = null;
 }
