@@ -8,11 +8,11 @@ import { Pool } from "pg";
 import { sendEmail } from "@/lib/email";
 import { site } from "@/lib/site";
 
-// Better Auth wants a plain postgres URL; the API's DATABASE_URL uses the asyncpg driver form.
-const connectionString = (process.env.DATABASE_URL ?? "").replace(
-  "postgresql+asyncpg://",
-  "postgresql://",
-);
+// DATABASE_URL is written for the API's asyncpg driver (`postgresql+asyncpg://…?ssl=require`);
+// node-postgres wants the plain scheme and `sslmode=require` instead.
+const connectionString = (process.env.DATABASE_URL ?? "")
+  .replace("postgresql+asyncpg://", "postgresql://")
+  .replace(/([?&])ssl=require\b/, "$1sslmode=require");
 
 const google =
   process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET

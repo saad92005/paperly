@@ -3,12 +3,12 @@
 > Claude Code updates this file at the end of every phase. Newest entry on top.
 
 ## Current phase
-Phase 0 — Foundation (verified on a local test Postgres; switch `DATABASE_URL` to Neon to finish — see "Neon setup")
+Phase 0 — Foundation ✅ done 2026-10-13 (verified on Neon). Next: Phase 1 — Ingestion
 
 ## Neon setup (one-time, ~3 min)
 1. Sign in at console.neon.tech → **New project** (Postgres 17, region near you).
 2. **Connect** → copy the **pooled** connection string. In `.env`, set
-   `DATABASE_URL=postgresql+asyncpg://…` (change only the scheme; keep `?sslmode=require` — if asyncpg rejects it, replace it with `?ssl=require`).
+   `DATABASE_URL=postgresql+asyncpg://…` (change only the scheme; replace the query string with `?ssl=require` (asyncpg rejects `channel_binding`; the web app converts it for node-postgres)).
 3. `BETTER_AUTH_SECRET` is already generated in `.env`; keep it secret.
 4. `make db-migrate` → `make dev` → http://localhost:3000/login.
 5. Magic links print in the `make dev` console until `RESEND_API_KEY` is set. Google sign-in is optional (see `.env.example`).
@@ -20,5 +20,6 @@ Phase 0 — Foundation (verified on a local test Postgres; switch `DATABASE_URL`
 **How to run/try:** `make setup` → fill `.env` (Neon setup above) → `make db-migrate` → `make dev` → `/login` → "Use a password instead" → Create account → `/library`.
 **Tests:** API 13 passing (auth rejections incl. wrong issuer/audience/expired/foreign key, profile, error shape, request IDs); web 4 passing (API client incl. Bearer header). `make lint` clean (ruff, pyright strict, eslint, tsc).
 **Verified in browser (Playwright, local Postgres):** sign up with password → `/library` → `/v1/me` 200 with the trigger-created profile; sign out → magic link (from dev console) → signed in again → `/v1/me` 200. No console errors. Earlier: `/`, `/login`, `/library` light 1280 px and dark 375 px.
-**Known gaps / follow-ups:** not yet run against Neon (needs your project URL); CI not run on GitHub yet (no remote); PDF blob storage choice moves to Phase 1 (ADR-007); RLS is defense in depth only — the API connects as table owner, which bypasses it, until a restricted role is added (Phase 5 security pass); `make e2e`/`eval` are placeholders until Phases 2–3.
+**Verified on Neon (pgvector 0.8.6):** migrations applied; same browser flow passes; test users deleted afterwards.
+**Known gaps / follow-ups:** CI not run on GitHub yet (no remote); PDF blob storage choice moves to Phase 1 (ADR-007); RLS is defense in depth only — the API connects as table owner, which bypasses it, until a restricted role is added (Phase 5 security pass); `make e2e`/`eval` are placeholders until Phases 2–3.
 **Fixed:** login page kept a spinning "Sign in" after sign-out because Next 16 (cacheComponents) keeps page state across navigation — the form now resets on success. Signing out made the still-mounted library page refetch `/v1/me` with a dead session (two 401s) — user-scoped query keys now include the user id and sign-out no longer clears the cache. Routes read the app's own settings (`create_app(settings)`), not the global ones.
