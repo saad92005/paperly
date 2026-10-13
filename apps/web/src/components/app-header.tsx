@@ -1,7 +1,9 @@
 "use client";
 
 import { BookOpen, LogOut } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -11,12 +13,15 @@ import { site } from "@/lib/site";
 
 export function AppHeader() {
   const session = useSession();
+  const router = useRouter();
+  const queryClient = useQueryClient();
 
   async function signOut() {
     clearApiToken();
     await authClient.signOut();
-    // Full reload drops every cached query and page state from the signed-in session.
-    window.location.assign("/login");
+    // Drop every cached API response from the signed-in session.
+    queryClient.clear();
+    router.replace("/login");
   }
 
   return (

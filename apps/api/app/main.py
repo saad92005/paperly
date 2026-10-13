@@ -50,6 +50,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["*"],
         expose_headers=["X-Request-ID"],
     )
+    # Routes depend on get_settings; make them see the settings this app was built with.
+    app.dependency_overrides[get_settings] = lambda: settings
     install_error_handlers(app)
     app.include_router(health.router)
     app.include_router(me.router)
