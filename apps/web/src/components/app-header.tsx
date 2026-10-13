@@ -1,7 +1,6 @@
 "use client";
 
 import { BookOpen, LogOut } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -14,13 +13,12 @@ import { site } from "@/lib/site";
 export function AppHeader() {
   const session = useSession();
   const router = useRouter();
-  const queryClient = useQueryClient();
 
   async function signOut() {
+    // User-scoped queries are keyed by user id (see lib/api.ts), so they simply go idle here;
+    // clearing the cache would make still-mounted pages refetch with a dead session.
     clearApiToken();
     await authClient.signOut();
-    // Drop every cached API response from the signed-in session.
-    queryClient.clear();
     router.replace("/login");
   }
 

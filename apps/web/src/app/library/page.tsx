@@ -7,7 +7,7 @@ import { useEffect } from "react";
 
 import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, api, queryKeys } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
 const IMPORT_TILES = [
@@ -20,7 +20,8 @@ export default function LibraryPage() {
   const session = useSession();
   const router = useRouter();
   const signedIn = session.status === "signed-in";
-  const me = useQuery({ queryKey: ["me"], queryFn: api.me, enabled: signedIn });
+  const userId = signedIn ? session.user.id : "";
+  const me = useQuery({ queryKey: queryKeys.me(userId), queryFn: api.me, enabled: signedIn });
 
   useEffect(() => {
     if (session.status === "signed-out") router.replace("/login");

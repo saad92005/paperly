@@ -54,6 +54,11 @@ export async function apiFetch<T>(
   return (await res.json()) as T;
 }
 
+/** Query keys for user-scoped data always include the user id, so sessions never share cache. */
+export const queryKeys = {
+  me: (userId: string) => ["me", userId] as const,
+};
+
 export const api = {
   health: () => apiFetch<Health>("/health", {}, { auth: false }),
   me: () => apiFetch<Profile>("/v1/me"),
