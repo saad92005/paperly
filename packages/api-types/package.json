@@ -1,0 +1,18 @@
+{
+  "name": "@paperly/api-types",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "types": "./schema.d.ts",
+  "exports": {
+    ".": {
+      "types": "./schema.d.ts"
+    }
+  },
+  "scripts": {
+    "generate": "openapi-typescript ./openapi.json -o ./schema.d.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0"
+  }
+}
