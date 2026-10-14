@@ -42,7 +42,7 @@ jobs:
           pg_dump "$(echo "$URL" | sed 's/+asyncpg//; s/ssl=require/sslmode=require/')" -Fc -f paperly.dump
           gpg --batch --yes --pinentry-mode loopback --passphrase "$PASS" --symmetric --cipher-algo AES256             -o paperly.dump.gpg paperly.dump
           rm paperly.dump
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: hashFiles('paperly.dump.gpg') != ''
         with:
           name: paperly-db-backup

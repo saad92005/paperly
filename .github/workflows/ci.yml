@@ -88,7 +88,7 @@ jobs:
           key: models-bge-small-en-v1.5-tinybert
       - name: Eval smoke gate (retrieval recall + abstention, no LLM)
         run: uv run python scripts/eval.py --smoke --gate --no-llm
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: eval-smoke-report
