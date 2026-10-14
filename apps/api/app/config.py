@@ -48,7 +48,8 @@ class Settings(BaseSettings):
     embeddings_dim: int = 384
     reranker: Literal["stub", "flashrank"] = "flashrank"
     model_cache_dir: str = str(Path(__file__).resolve().parents[1] / ".models")
-    abstain_threshold: float = 0.15
+    abstain_threshold: float = 0.15  # FlashRank score
+    abstain_vsim: float = 0.62  # bge-small cosine; calibrated in docs/07
     pdf_parser_chain: str = "arxiv_html,grobid,pdfplumber"
     grobid_url: str = ""
 

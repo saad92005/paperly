@@ -1,5 +1,4 @@
 import asyncio
-import json
 from collections.abc import AsyncIterator
 from uuid import UUID
 
@@ -12,6 +11,7 @@ from app.deps import SessionDep
 from app.errors import NotFound
 from app.jobs import queue
 from app.schemas.papers import JobOut
+from app.sse import sse
 
 router = APIRouter(prefix="/v1/jobs", tags=["jobs"])
 
@@ -22,10 +22,6 @@ async def get_job(job_id: UUID, user: CurrentUserDep, s: SessionDep) -> JobOut:
     if job is None:
         raise NotFound()
     return JobOut(**job)
-
-
-def sse(event: str, data: object) -> str:
-    return f"event: {event}\ndata: {json.dumps(data, default=str)}\n\n"
 
 
 @router.get("/{job_id}/events")

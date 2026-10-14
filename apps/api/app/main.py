@@ -15,7 +15,7 @@ from app.jobs.handlers import build_handlers
 from app.jobs.worker import Worker
 from app.logging import configure_logging
 from app.providers.registry import build_providers
-from app.routers import health, jobs, me, papers
+from app.routers import chat, health, jobs, me, papers
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -63,6 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(me.router)
     app.include_router(papers.router)
     app.include_router(jobs.router)
+    app.include_router(chat.router)
     return app
 
 

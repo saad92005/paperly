@@ -398,6 +398,7 @@ def parse_pdf_bytes(pdf: bytes, *, max_pages: int = 500) -> ParsedDocument:
     sections: list[ParsedSection] = [ParsedSection("Front matter", 1, 1, 1)]
     streams: list[_Stream] = [_Stream("body", 0)]
     ref_lines: list[Line] = []
+    footnotes: dict[int, _Stream] = {}
     in_refs = False
     for ln in lines:
         text = ln.text
@@ -435,6 +436,18 @@ def parse_pdf_bytes(pdf: bytes, *, max_pages: int = 500) -> ParsedDocument:
         if in_refs:
             ref_lines.append(ln)
             continue
+        if (
+            ln.size <= body_size * 0.88
+            and ln.top > heights[ln.page] * 0.7
+            and not CAPTION.match(text)
+            and streams[-1].kind != "caption"
+        ):
+            # Footnotes: keep them, but out of the running text so sentences don't break.
+            fn = footnotes.setdefault(streams[-1].section_idx, _Stream("body", streams[-1].section_idx))
+            for w in ln.words:
+                if not _merge_hyphen(fn.words, w):
+                    fn.words.append(w)
+            continue
         cur = streams[-1]
         if CAPTION.match(text):
             streams.append(_Stream("caption", cur.section_idx))
@@ -451,7 +464,7 @@ def parse_pdf_bytes(pdf: bytes, *, max_pages: int = 500) -> ParsedDocument:
                 cur.words.append(w)
 
     blocks: list[Block] = []
-    for s in streams:
+    for s in [*streams, *footnotes.values()]:
         sents = _sentences(s.words)
         if sents:
             blocks.append(Block(s.kind, s.section_idx, sents))
