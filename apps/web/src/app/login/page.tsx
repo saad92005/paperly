@@ -49,7 +49,13 @@ export default function LoginPage() {
         ? await authClient.signIn.email({ email, password })
         : await authClient.signUp.email({ email, password, name: email.split("@")[0] });
     if (error) {
-      setForm({ kind: "error", message: error.message ?? "Sign-in failed." });
+      const message =
+        error.status === 429
+          ? "Too many attempts. Wait a minute and try again, or use a magic link instead."
+          : error.status === 401
+            ? "Wrong email or password. Try again, or sign in with a magic link."
+            : (error.message ?? "Sign-in failed.");
+      setForm({ kind: "error", message });
       return;
     }
     // Next keeps this page's state when navigating back, so never leave it "busy".

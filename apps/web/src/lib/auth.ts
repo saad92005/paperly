@@ -32,6 +32,17 @@ export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   database: new Pool({ connectionString, max: 5 }),
   advanced: { database: { generateId: "uuid" } },
+  // Defaults allow only 3 sign-ins per 10 s, which real users hit after a mistyped password.
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 100,
+    customRules: {
+      "/sign-in/email": { window: 60, max: 10 },
+      "/sign-up/email": { window: 60, max: 5 },
+      "/sign-in/magic-link": { window: 60, max: 5 },
+    },
+  },
   emailAndPassword: { enabled: true, minPasswordLength: 8 },
   socialProviders: google,
   plugins: [
