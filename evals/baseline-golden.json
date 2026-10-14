@@ -1,0 +1,9 @@
+{
+  "items": 45,
+  "recall_at_8": 0.895,
+  "mrr": 0.715,
+  "false_abstain_rate": 0.0,
+  "abstain_accuracy": 1.0,
+  "retrieval_p95_ms": 19994,
+  "llm": false
+}

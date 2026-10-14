@@ -1,0 +1,44 @@
+# Render Blueprint (docs/09): New → Blueprint → pick this repo. Secrets marked sync:false are
+# entered once in the Render dashboard; never commit them.
+services:
+  - type: web
+    name: paperly-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: prod
+      - key: DATABASE_URL
+        sync: false
+      - key: WEB_BASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: API_BASE_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: CONTACT_EMAIL
+        sync: false
+      - key: LLM_PROVIDER_IMPL
+        value: openai_compat
+      - key: EMBEDDINGS_PROVIDER
+        value: fastembed
+      - key: RERANKER
+        value: flashrank
+      - key: WORKER_CONCURRENCY
+        value: "1"
+      - key: EMBED_BATCH
+        value: "4"
+      - key: EMBED_THREADS
+        value: "1"
+      - key: LOG_LEVEL
+        value: INFO

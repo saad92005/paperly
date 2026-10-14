@@ -231,7 +231,7 @@ async def ask(
             yield ev
         return
 
-    if r.abstain(settings.abstain_threshold, settings.abstain_vsim):
+    if r.abstain(settings.abstain_threshold, settings.abstain_vsim, query):
         closest = r.candidates[:3]
         canned = "NOT_FOUND\nI couldn't find this in the paper" + ("s" if len(papers) > 1 else "") + "."
         meta["closest"] = [

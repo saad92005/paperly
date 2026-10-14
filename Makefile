@@ -57,8 +57,14 @@ types:
 	cd $(API) && PYTHONPATH=. uv run python scripts/dump_openapi.py ../../packages/api-types/openapi.json
 	pnpm --filter @paperly/api-types generate
 
+# Needs `make dev` running (web + API + database).
 e2e:
-	@echo "Playwright e2e suite arrives in Phase 3 (docs/10)."
+	pnpm --filter web exec playwright test
 
-eval eval-smoke:
-	@echo "The eval harness arrives in Phase 2 (docs/07)."
+# Full golden set (5 arXiv papers); add an LLM key to .env to also score answers.
+eval:
+	cd $(API) && PYTHONPATH=. uv run python scripts/eval.py
+
+# Fixture-only CI gate: retrieval recall@8 >= 0.8 and abstention accuracy >= 0.85.
+eval-smoke:
+	cd $(API) && PYTHONPATH=. uv run python scripts/eval.py --smoke --gate

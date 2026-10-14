@@ -10,14 +10,14 @@ describe("apiFetch", () => {
   it("returns parsed JSON on success", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => new Response(JSON.stringify({ status: "ok" }), { status: 200 })),
+      vi.fn(async () => new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { "content-type": "application/json" } })),
     );
     await expect(apiFetch<{ status: string }>("/health")).resolves.toEqual({ status: "ok" });
   });
 
   it("sends the API token as a Bearer header", async () => {
     const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
-      async () => new Response("{}", { status: 200 }),
+      async () => new Response("{}", { status: 200, headers: { "content-type": "application/json" } }),
     );
     vi.stubGlobal("fetch", fetchMock);
     await apiFetch("/v1/me");

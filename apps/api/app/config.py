@@ -6,8 +6,9 @@ from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# .env sits at the repo root (two levels above apps/api).
-_ROOT_ENV = Path(__file__).resolve().parents[3] / ".env"
+# .env sits at the repo root in development; containers get real env vars instead.
+_parents = Path(__file__).resolve().parents
+_ROOT_ENV = (_parents[3] / ".env") if len(_parents) > 3 else Path(".env")
 
 
 class Settings(BaseSettings):
@@ -48,6 +49,8 @@ class Settings(BaseSettings):
     embeddings_dim: int = 384
     reranker: Literal["stub", "flashrank"] = "flashrank"
     model_cache_dir: str = str(Path(__file__).resolve().parents[1] / ".models")
+    embed_batch: int = 4
+    embed_threads: int = 1
     abstain_threshold: float = 0.15  # FlashRank score
     abstain_vsim: float = 0.62  # bge-small cosine; calibrated in docs/07
     pdf_parser_chain: str = "arxiv_html,grobid,pdfplumber"

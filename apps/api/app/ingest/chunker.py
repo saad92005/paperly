@@ -11,7 +11,7 @@ from app.providers.base import Block, ParsedDocument, Sentence
 
 TARGET_TOKENS = 380
 MAX_TOKENS = 512
-CHUNKER_VERSION = "c1"
+CHUNKER_VERSION = "c2"
 
 
 def count_tokens(text: str) -> int:
@@ -66,6 +66,15 @@ def _pack(sentences: list[Sentence]) -> list[list[Sentence]]:
     if cur:
         groups.append(cur)
     return groups
+
+
+def looks_like_math(text: str) -> bool:
+    """Equation/table debris: few real words, many single symbols."""
+    toks = text.split()
+    if len(toks) < 8:
+        return False
+    words = sum(1 for t in toks if len(t) >= 3 and sum(ch.isalpha() for ch in t) >= len(t) * 0.7)
+    return words / len(toks) < 0.4
 
 
 def _draft(idx: int, kind: str, sidx: int, sents: list[Sentence], header: str) -> ChunkDraft:

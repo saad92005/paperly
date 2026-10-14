@@ -1,0 +1,45 @@
+{"paper": "1706.03762", "q": "How many attention heads does the base model use?", "must": ["h = 8"], "answerable": true}
+{"paper": "1706.03762", "q": "What BLEU score does the big Transformer get on English-to-German?", "must": ["28.4"], "answerable": true}
+{"paper": "1706.03762", "q": "What BLEU score does the model reach on English-to-French?", "must": ["41.8"], "answerable": true}
+{"paper": "1706.03762", "q": "What optimizer was used for training?", "must": ["adam"], "answerable": true}
+{"paper": "1706.03762", "q": "How many identical layers are in the encoder stack?", "must": ["n = 6"], "answerable": true}
+{"paper": "1706.03762", "q": "What hardware were the models trained on?", "must": ["p100"], "answerable": true}
+{"paper": "1706.03762", "q": "How long did training the big models take?", "must": ["3.5 days"], "answerable": true}
+{"paper": "1706.03762", "q": "How many warmup steps does the learning rate schedule use?", "must": ["4000"], "answerable": true}
+{"paper": "1706.03762", "q": "Why do they use sinusoidal positional encodings?", "must": ["sinusoid"], "answerable": true}
+{"paper": "1706.03762", "q": "What attention function does the Transformer use?", "must": ["scaled dot-product attention"], "answerable": true}
+{"paper": "1706.03762", "q": "How does the model do on English constituency parsing?", "must": ["constituency parsing"], "answerable": true}
+{"paper": "1706.03762", "q": "What is the recipe for chocolate cake?", "must": [], "answerable": false}
+{"paper": "1706.03762", "q": "Who won the 2018 FIFA World Cup?", "must": [], "answerable": false}
+{"paper": "1706.03762", "q": "What BLEU score does the Transformer get on English-to-Japanese translation?", "must": [], "answerable": false, "hard": true}
+{"paper": "1810.04805", "q": "What are BERT's pre-training tasks?", "must": ["next sentence prediction"], "answerable": true}
+{"paper": "1810.04805", "q": "What percentage of input tokens are masked?", "must": ["15%"], "answerable": true}
+{"paper": "1810.04805", "q": "How many parameters does BERT large have?", "must": ["340m"], "answerable": true}
+{"paper": "1810.04805", "q": "How many parameters does BERT base have?", "must": ["110m"], "answerable": true}
+{"paper": "1810.04805", "q": "What GLUE score does BERT obtain?", "must": ["80.5"], "answerable": true}
+{"paper": "1810.04805", "q": "What text corpora were used for pre-training?", "must": ["bookscorpus"], "answerable": true}
+{"paper": "1810.04805", "q": "How often is a chosen token replaced with the [MASK] token?", "must": ["80%"], "answerable": true}
+{"paper": "1810.04805", "q": "What F1 does BERT get on SQuAD v1.1?", "must": ["93.2"], "answerable": true}
+{"paper": "1810.04805", "q": "What is the capital of France?", "must": [], "answerable": false}
+{"paper": "2005.11401", "q": "What retriever does RAG use?", "must": ["dpr"], "answerable": true}
+{"paper": "2005.11401", "q": "Which model is used as the generator?", "must": ["bart"], "answerable": true}
+{"paper": "2005.11401", "q": "How many documents are in the Wikipedia index?", "must": ["21m"], "answerable": true}
+{"paper": "2005.11401", "q": "What are the two RAG model formulations?", "must": ["rag-sequence"], "answerable": true}
+{"paper": "2005.11401", "q": "Which fact verification dataset is used?", "must": ["fever"], "answerable": true}
+{"paper": "2005.11401", "q": "What question generation task do they evaluate?", "must": ["jeopardy"], "answerable": true}
+{"paper": "2005.11401", "q": "Which open-domain QA datasets are evaluated?", "must": ["natural questions"], "answerable": true}
+{"paper": "2005.11401", "q": "How do I fix my car engine?", "must": [], "answerable": false}
+{"paper": "1512.03385", "q": "What top-5 error does the ensemble achieve on the ImageNet test set?", "must": ["3.57%"], "answerable": true}
+{"paper": "1512.03385", "q": "How deep are the residual nets evaluated on ImageNet?", "must": ["152"], "answerable": true}
+{"paper": "1512.03385", "q": "What problem with deeper networks do residual connections address?", "must": ["degradation"], "answerable": true}
+{"paper": "1512.03385", "q": "Which smaller dataset is used for analysis?", "must": ["cifar-10"], "answerable": true}
+{"paper": "1512.03385", "q": "Which competition did the method win?", "must": ["ilsvrc 2015"], "answerable": true}
+{"paper": "1512.03385", "q": "What is the bottleneck building block?", "must": ["bottleneck"], "answerable": true}
+{"paper": "1512.03385", "q": "How deep is the deepest network explored on CIFAR-10?", "must": ["1202"], "answerable": true}
+{"paper": "1512.03385", "q": "What is the best pizza topping?", "must": [], "answerable": false}
+{"paper": "2106.09685", "q": "By how much does LoRA reduce the number of trainable parameters compared to GPT-3 fine-tuning?", "must": ["10,000 times"], "answerable": true}
+{"paper": "2106.09685", "q": "How much does LoRA reduce GPU memory requirements?", "must": ["3 times"], "answerable": true}
+{"paper": "2106.09685", "q": "Does LoRA add inference latency?", "must": ["inference latency"], "answerable": true}
+{"paper": "2106.09685", "q": "Which encoder models is LoRA evaluated on?", "must": ["roberta"], "answerable": true}
+{"paper": "2106.09685", "q": "What is the largest model LoRA is applied to?", "must": ["175b"], "answerable": true}
+{"paper": "2106.09685", "q": "When was the Eiffel Tower built?", "must": [], "answerable": false}

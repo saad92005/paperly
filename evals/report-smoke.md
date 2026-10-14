@@ -1,0 +1,16 @@
+# Paperly eval — smoke
+
+Run: 2026-10-14 11:44 · LLM: no (retrieval + abstain only)
+
+| Metric | Value |
+|---|---|
+| items | 8 |
+| recall_at_8 | 1.0 |
+| mrr | 1.0 |
+| false_abstain_rate | 0.0 |
+| abstain_accuracy | 1.0 |
+| retrieval_p95_ms | 3683 |
+| llm | False |
+
+## Misses
+

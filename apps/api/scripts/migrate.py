@@ -5,6 +5,7 @@ Each file runs in its own transaction. Never edit a migration that has been appl
 """
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -12,7 +13,8 @@ import asyncpg
 
 from app.config import get_settings
 
-MIGRATIONS = Path(__file__).resolve().parents[3] / "db" / "migrations"
+_parents = Path(__file__).resolve().parents
+MIGRATIONS = Path(os.environ.get("MIGRATIONS_DIR") or (_parents[3] / "db" / "migrations"))
 
 
 def plain_url(url: str) -> str:
@@ -27,7 +29,7 @@ async def migrate(url: str, *, status_only: bool = False) -> list[str]:
             " version text primary key, applied_at timestamptz not null default now())"
         )
         done = {r["version"] for r in await conn.fetch("select version from schema_migrations")}
-        pending = [f for f in sorted(MIGRATIONS.glob("*.sql")) if f.stem not in done]
+        pending = [f for f in sorted(MIGRATIONS.glob("*.sql")) if f.stem not in done]  # noqa: ASYNC240 (tiny dir, CLI)
         if status_only:
             return [f.stem for f in pending]
         for f in pending:

@@ -28,7 +28,11 @@ def build_providers(settings: Settings) -> Providers:
         from app.providers.local import FastEmbedEmbeddings
 
         embeddings: EmbeddingProvider = FastEmbedEmbeddings(
-            settings.embeddings_model, settings.embeddings_dim, settings.model_cache_dir
+            settings.embeddings_model,
+            settings.embeddings_dim,
+            settings.model_cache_dir,
+            batch=settings.embed_batch,
+            threads=settings.embed_threads or None,
         )
     else:
         embeddings = StubEmbeddings(settings.embeddings_dim)

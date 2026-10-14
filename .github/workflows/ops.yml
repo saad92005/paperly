@@ -1,0 +1,50 @@
+name: Ops
+
+# Daily health check of the production API and a weekly database backup.
+# Configure in GitHub → Settings → Secrets and variables → Actions:
+#   variable PROD_API_URL (e.g. https://paperly-api.onrender.com), secrets PROD_DATABASE_URL and
+#   BACKUP_PASSPHRASE. Artifacts of public repos are readable by others, so dumps are always
+#   encrypted (gpg AES256) and skipped entirely when no passphrase is configured.
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    if: vars.PROD_API_URL != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health (wakes the free instance; fails the run if the DB is down)
+        run: |
+          for i in 1 2 3 4 5 6; do
+            body=$(curl -fsS --max-time 60 "${{ vars.PROD_API_URL }}/health" || true)
+            echo "$body"
+            echo "$body" | grep -q '"db":"ok"' && exit 0
+            sleep 20
+          done
+          exit 1
+
+  backup:
+    if: github.event.schedule == '17 6 * * *' && github.run_number % 7 == 0 || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: pg_dump (custom format)
+        env:
+          URL: ${{ secrets.PROD_DATABASE_URL }}
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$PASS" ]; then echo "backup secrets not set; skipping"; exit 0; fi
+          sudo apt-get -qq update && sudo apt-get -qq install -y postgresql-client >/dev/null
+          pg_dump "$(echo "$URL" | sed 's/+asyncpg//; s/ssl=require/sslmode=require/')" -Fc -f paperly.dump
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$PASS" --symmetric --cipher-algo AES256             -o paperly.dump.gpg paperly.dump
+          rm paperly.dump
+      - uses: actions/upload-artifact@v4
+        if: hashFiles('paperly.dump.gpg') != ''
+        with:
+          name: paperly-db-backup
+          path: paperly.dump.gpg
+          retention-days: 30

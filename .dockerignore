@@ -1,0 +1,11 @@
+**/node_modules
+**/.next
+**/.venv
+**/.models
+**/__pycache__
+.git
+.env
+.env.*
+!.env.example
+.tmp_fixtures
+apps/web

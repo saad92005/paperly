@@ -9,6 +9,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   api:
     runs-on: ubuntu-latest
@@ -25,6 +28,8 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run pyright
       - run: uv run pytest -q
+        env:
+          PYTHONPATH: .
 
   web:
     runs-on: ubuntu-latest
@@ -39,9 +44,14 @@ jobs:
       - run: pnpm --filter web lint
       - run: pnpm --filter web typecheck
       - run: pnpm --filter web test
+      - run: pnpm --filter web build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: https://api.example.com
+          BETTER_AUTH_SECRET: ci-only-not-a-secret-ci-only-not-a-secret
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
 
-  migrations:
-    # Applies every migration to a fresh pgvector Postgres to catch SQL errors early.
+  db:
+    # Fresh pgvector Postgres: migrations (twice), cross-user access tests, and the eval-smoke gate.
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -51,15 +61,58 @@ jobs:
         ports: ["5432:5432"]
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: apps/api
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/postgres
+      TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/postgres
+      PYTHONPATH: .
+      LLM_PROVIDER_IMPL: openai_compat
+      WORKER_MODE: "off"
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
       - name: Apply migrations twice (second run must be a no-op)
-        working-directory: apps/api
-        env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/postgres
-          PYTHONPATH: .
         run: |
-          uv sync --frozen
           uv run python scripts/migrate.py
           uv run python scripts/migrate.py | grep -q "up to date"
+      - name: Cross-user access tests
+        run: uv run pytest -q tests/test_access.py
+      - uses: actions/cache@v4
+        with:
+          path: apps/api/.models
+          key: models-bge-small-en-v1.5-tinybert
+      - name: Eval smoke gate (retrieval recall + abstention, no LLM)
+        run: uv run python scripts/eval.py --smoke --gate --no-llm
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-smoke-report
+          path: evals/report-smoke.md
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: astral-sh/setup-uv@v6
+      - name: Python dependency audit
+        working-directory: apps/api
+        run: |
+          uv export --frozen --no-dev --no-hashes -o /tmp/requirements.txt
+          uvx pip-audit -r /tmp/requirements.txt --progress-spinner off
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: JS dependency audit (high and critical)
+        run: pnpm audit --prod --audit-level high

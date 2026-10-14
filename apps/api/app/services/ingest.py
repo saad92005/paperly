@@ -14,16 +14,13 @@ from app.errors import AppError
 from app.ingest import sources
 from app.ingest.chunker import CHUNKER_VERSION, chunk_document
 from app.ingest.fetch import FetchFailed, fetch_bytes
+from app.ingest.pdfplumber_parser import TooManyPages
 from app.jobs import queue
 from app.jobs.worker import JobContext, RetryableError
 from app.providers.registry import Providers
 from app.repos import papers as repo
 
 log = structlog.get_logger()
-
-
-class TooManyPages(AppError):
-    code, status = "too_many_pages", 422
 
 
 class NotPdf(AppError):

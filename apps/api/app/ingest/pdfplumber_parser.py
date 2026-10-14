@@ -25,6 +25,10 @@ class ScannedPdf(AppError):
     message = "This PDF looks scanned (no text layer). OCR is not supported yet."
 
 
+class TooManyPages(AppError):
+    code, status = "too_many_pages", 422
+
+
 class UnreadablePdf(AppError):
     code, status = "unsupported_file", 422
     message = "This file could not be read as a PDF."
@@ -46,6 +50,7 @@ REF_START_NUM = re.compile(r"^\[\d{1,3}\]|^\d{1,3}\.\s")
 ABSTRACT_INLINE = re.compile(r"^abstract\s*[—–\-:.]\s*", re.IGNORECASE)
 DOI_RE = re.compile(r"\b(10\.\d{4,9}/[^\s\"<>]+[^\s\"<>.,;])")
 ARXIV_RE = re.compile(r"arXiv:(\d{4}\.\d{4,5})(v\d+)?", re.IGNORECASE)
+SMALL_CAPS = re.compile(r"\b([A-Z]) (?=[A-Z]{2,}\b)")
 YEAR_RE = re.compile(r"\b(19[89]\d|20[0-4]\d)\b")
 
 _segmenter = pysbd.Segmenter(language="en", clean=False, char_span=False)
@@ -356,8 +361,16 @@ def _split_references(lines: list[Line]) -> list[list[Line]]:
 def parse_pdf_bytes(pdf: bytes, *, max_pages: int = 500) -> ParsedDocument:
     try:
         doc = pdfplumber.open(io.BytesIO(pdf))
+        total_pages = len(doc.pages)
     except Exception as exc:
+        if "password" in type(exc).__name__.lower() or "encrypt" in str(exc).lower():
+            raise UnreadablePdf(
+                "This PDF is password-protected. Remove the password and upload it again."
+            ) from exc
         raise UnreadablePdf() from exc
+    if total_pages > max_pages:
+        doc.close()
+        raise TooManyPages(f"This paper has {total_pages} pages; the limit is {max_pages}.")
     with doc:
         pages = doc.pages[:max_pages]
         page_sizes = [(float(p.width), float(p.height)) for p in pages]
@@ -402,9 +415,19 @@ def parse_pdf_bytes(pdf: bytes, *, max_pages: int = 500) -> ParsedDocument:
     in_refs = False
     for ln in lines:
         text = ln.text
+        if ln.size >= body_size * 0.95 and SMALL_CAPS.search(text):
+            fixed = SMALL_CAPS.sub(r"\1", text)
+            if (
+                _heading_level(fixed, ln, body_size) is not None
+                or ABSTRACT_INLINE.match(fixed)
+                or fixed.strip().lower() == "abstract"
+            ):
+                text = fixed  # small-caps heading rendered as separate first letters
         if title and ln.page == 1 and text in title and ln.size >= body_size * 1.2:
             continue
-        m_abs = ABSTRACT_INLINE.match(text)
+        m_abs = ABSTRACT_INLINE.match(text) or (
+            re.fullmatch(r"abstract", text.strip(), re.I) and ln.page <= 2
+        )
         level = _heading_level(text, ln, body_size)
         if level is None and m_abs and ln.page <= 2:
             level = 1
@@ -428,6 +451,8 @@ def parse_pdf_bytes(pdf: bytes, *, max_pages: int = 500) -> ParsedDocument:
                 # Drop the "Abstract—" token(s) and keep the remainder as abstract text.
                 while rest and re.match(r"^abstract\W*$", rest[0].text, re.IGNORECASE):
                     rest = rest[1:]
+                if len(rest) > 1 and (rest[0].text + rest[1].text).lower().rstrip(".:—-") == "abstract":
+                    rest = rest[2:]  # small caps: "A BSTRACT"
                 if rest and rest[0].text.lower().startswith("abstract"):
                     rest[0].text = ABSTRACT_INLINE.sub("", rest[0].text)
                 streams[-1].words.extend(w for w in rest if w.text)
@@ -504,6 +529,9 @@ def parse_pdf_bytes(pdf: bytes, *, max_pages: int = 500) -> ParsedDocument:
     )
 
 
+PARSE_TIMEOUT_S = 90
+
+
 class PdfPlumberParser:
     name = "pdfplumber"
 
@@ -513,4 +541,10 @@ class PdfPlumberParser:
     async def parse(self, pdf: bytes) -> ParsedDocument:
         import anyio
 
-        return await anyio.to_thread.run_sync(lambda: parse_pdf_bytes(pdf, max_pages=self.max_pages))
+        try:
+            with anyio.fail_after(PARSE_TIMEOUT_S):
+                return await anyio.to_thread.run_sync(
+                    lambda: parse_pdf_bytes(pdf, max_pages=self.max_pages), abandon_on_cancel=True
+                )
+        except TimeoutError as exc:
+            raise UnreadablePdf("This PDF took too long to read. Try a smaller or simpler file.") from exc

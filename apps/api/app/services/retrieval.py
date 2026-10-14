@@ -44,6 +44,13 @@ limit :k
 )
 
 
+GENERIC = re.compile(
+    r"\b(limitations?|weakness(es)?|contributions?|future work|main (idea|finding|result)s?|key (idea|finding|result)s?|"
+    r"summar(y|ize|ise)|conclusions?|method(ology)?|approach|results?|datasets?|baselines?|experiments?|"
+    r"novelty|motivation|problem)\b",
+    re.I,
+)
+
 STOP = set(
     "a an the of in on for to and or is are was were be been what which who whom how why where when "
     "does do did it its this that these those paper model use used using with by from about discuss "
@@ -60,7 +67,7 @@ def heading_boost(query: str, heading: str | None) -> float:
     q, h = _terms(query), _terms(heading or "")
     if not q or not h:
         return 0.0
-    return 0.5 * len(q & h) / len(q)
+    return 0.15 * len(q & h) / len(q)
 
 
 @dataclass
@@ -74,6 +81,15 @@ class Hit:
         return self.chunk["paper_id"]
 
 
+def blend(rerank: float, h: Hit, query: str) -> float:
+    """Cross-encoder score blended with vector similarity (robust to its 256-token truncation),
+    a small heading match boost, and a penalty for equation/table debris."""
+    vsim = float(h.chunk.get("vsim") or 0.0)
+    v = min(1.0, max(0.0, (vsim - 0.55) / 0.35))
+    score = 0.65 * rerank + 0.35 * v + heading_boost(query, h.chunk.get("section"))
+    return score * (0.6 if h.chunk["kind"] == "equation" else 1.0)
+
+
 @dataclass
 class Retrieval:
     hits: list[Hit]
@@ -81,8 +97,11 @@ class Retrieval:
     best_score: float = 0.0
     best_vsim: float = 0.0
 
-    def abstain(self, tau: float, vtau: float) -> bool:
-        """Refuse only when both the reranker and plain vector similarity say "unrelated"."""
+    def abstain(self, tau: float, vtau: float, query: str = "") -> bool:
+        """Refuse only when both the reranker and plain vector similarity say "unrelated".
+        Questions about parts every paper has (limitations, method, results...) never abstain."""
+        if self.hits and GENERIC.search(query):
+            return False
         return not self.hits or (self.best_score < tau and self.best_vsim < vtau)
 
 
@@ -133,7 +152,7 @@ async def retrieve(
         query, [f"{h.chunk['context_header']}\n{h.chunk['text']}" for h in cands], len(cands)
     )
     for i, score in ranked:
-        cands[i].score = score + heading_boost(query, cands[i].chunk.get("section"))
+        cands[i].score = blend(score, cands[i], query)
     cands.sort(key=lambda h: h.score, reverse=True)
     if per_paper is not None:
         picked: list[Hit] = []

@@ -23,6 +23,14 @@ from app.routers import chat, health, jobs, library, me, papers, workspace
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level)
+    if settings.sentry_dsn:
+        import sentry_sdk
+
+        # Errors only, no request bodies or PII (paper text never leaves via Sentry).
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn, environment=settings.app_env, release=settings.version,
+            traces_sample_rate=0.05, send_default_pii=False, max_request_body_size="never",
+        )  # fmt: skip
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:

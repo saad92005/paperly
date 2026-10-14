@@ -1,0 +1,8 @@
+{"paper": "fixture:two_column", "q": "What accuracy does Sparrow reach on PaperQA?", "must": ["91.2%"], "answerable": true}
+{"paper": "fixture:two_column", "q": "How large are the chunks?", "must": ["380 tokens"], "answerable": true}
+{"paper": "fixture:two_column", "q": "What learning rate was used?", "must": ["3e-4"], "answerable": true}
+{"paper": "fixture:two_column", "q": "How does citation precision change?", "must": ["0.88"], "answerable": true}
+{"paper": "fixture:two_column", "q": "What value of k does reciprocal rank fusion use?", "must": ["60"], "answerable": true}
+{"paper": "fixture:two_column", "q": "What are the limitations?", "must": ["scanned pdfs"], "answerable": true}
+{"paper": "fixture:two_column", "q": "What is the recipe for chocolate cake?", "must": [], "answerable": false}
+{"paper": "fixture:two_column", "q": "Who won the 2018 FIFA World Cup?", "must": [], "answerable": false}

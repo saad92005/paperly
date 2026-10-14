@@ -35,7 +35,14 @@ class SplitLLM(StubLLM):
     async def stream_chat(
         self, messages: list[Msg], *, temperature: float, max_tokens: int, json_mode: bool = False
     ) -> AsyncIterator[Delta]:
-        for piece in ["The model uses 8 he", "ads [", "S2", "]. It was trained", " for 12 epochs [S1][S9", "]."]:
+        for piece in [
+            "The model uses 8 he",
+            "ads [",
+            "S2",
+            "]. It was trained",
+            " for 12 epochs [S1][S9",
+            "].",
+        ]:
             yield Delta(text=piece)
 
 
@@ -98,7 +105,7 @@ def test_selection_caps_per_paper() -> None:
 
 
 def test_heading_boost() -> None:
-    assert heading_boost("Where does it discuss positional encoding?", "3.5 Positional Encoding") == 0.5
+    assert heading_boost("Where does it discuss positional encoding?", "3.5 Positional Encoding") == 0.15
     assert heading_boost("What optimizer?", "6 Results") == 0.0
 
 
