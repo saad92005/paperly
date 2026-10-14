@@ -5,6 +5,8 @@
 It runs at **$0**: free-tier hosting, local CPU embeddings and free LLM APIs. With no API key at all, it still works in an
 honest extractive mode.
 
+**Live:** https://paperly-beryl-ten.vercel.app
+
 > Open source (MIT) · Next.js 16 + FastAPI · Postgres/pgvector on Neon · pdf.js · fastembed + FlashRank · Groq/Gemini/OpenRouter
 
 ## What it does
@@ -78,8 +80,9 @@ Without one, Paperly runs in extractive mode. Magic links print in the `make dev
 
 ## Deploy ($0)
 
-- **API → Render** (free web service, Docker). `render.yaml` is a ready Blueprint: *New → Blueprint →* this repo, then fill in the secrets it lists.
-  It fits in 512 MB (see ADR-011), and migrations run on boot.
+- **API → Vercel** (Python function, `apps/api`): `uv run python scripts/bundle_models.py && vercel deploy --prod`.
+  `WORKER_MODE=request` runs queued jobs inside `POST /v1/worker/tick`, which the web app calls while it waits, so no
+  always-on server is needed and nothing has to "wake up". Alternative: Render/Docker with `render.yaml` (512 MB-safe, ADR-011).
 - **Web → Vercel** (root `apps/web`). Env: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `WEB_BASE_URL`, `NEXT_PUBLIC_API_BASE_URL`.
 - **Ops:** `.github/workflows/ops.yml` runs a daily `/health` check and a weekly encrypted `pg_dump`.
 

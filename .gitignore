@@ -38,3 +38,4 @@ apps/api/.models/
 
 .vercel
 .env*
+apps/api/models/
