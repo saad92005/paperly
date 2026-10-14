@@ -7,7 +7,8 @@ name: Ops
 #   encrypted (gpg AES256) and skipped entirely when no passphrase is configured.
 on:
   schedule:
-    - cron: "17 6 * * *"
+    - cron: "17 6 * * *"  # daily health check
+    - cron: "41 4 * * 1"  # weekly backup (Mondays)
   workflow_dispatch:
 
 permissions:
@@ -15,7 +16,7 @@ permissions:
 
 jobs:
   health:
-    if: vars.PROD_API_URL != ''
+    if: vars.PROD_API_URL != '' && github.event.schedule != '41 4 * * 1'
     runs-on: ubuntu-latest
     steps:
       - name: Ping /health (wakes the free instance; fails the run if the DB is down)
@@ -29,7 +30,7 @@ jobs:
           exit 1
 
   backup:
-    if: github.event.schedule == '17 6 * * *' && github.run_number % 7 == 0 || github.event_name == 'workflow_dispatch'
+    if: github.event.schedule == '41 4 * * 1' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: pg_dump (custom format)
