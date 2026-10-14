@@ -62,7 +62,9 @@ class Settings(BaseSettings):
     quota_questions_per_day: int = 50
     quota_imports_per_day: int = 10
     quota_compares_per_day: int = 5
-    worker_mode: Literal["inprocess", "off"] = "inprocess"
+    # inprocess: always-on loop (containers). request: jobs run inside POST /v1/worker/tick calls
+    # made by the web app (serverless hosts such as Vercel, which scale to zero).
+    worker_mode: Literal["inprocess", "request", "off"] = "inprocess"
     worker_concurrency: int = 2
     rate_limit_per_minute: int = 120
 

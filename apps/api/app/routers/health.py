@@ -16,7 +16,10 @@ async def health(request: Request, settings: Annotated[Settings, Depends(get_set
     else:
         db_state = "ok" if await db.ping() else "down"
     w = getattr(request.app.state, "worker", None)
-    worker = "running" if w is not None and w.running else "off"
+    if settings.worker_mode == "request":
+        worker = "on_demand"
+    else:
+        worker = "running" if w is not None and w.running else "off"
     return Health(
         status="ok" if db_state == "ok" else "degraded",
         version=settings.version,

@@ -28,4 +28,4 @@ class Health(BaseModel):
     status: Literal["ok", "degraded"]
     version: str
     db: Literal["ok", "down", "unconfigured"]
-    worker: Literal["running", "off"]
+    worker: Literal["running", "on_demand", "off"]

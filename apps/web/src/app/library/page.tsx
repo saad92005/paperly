@@ -10,7 +10,7 @@ import { Empty, ErrorState, Skeleton, StatusPill, selectClass } from "@/componen
 import { ImportDialog } from "@/components/import-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { api, queryKeys } from "@/lib/api";
+import { api, kickWorker, queryKeys } from "@/lib/api";
 import type { PaperCard } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -32,8 +32,11 @@ export default function LibraryPage() {
     queryFn: () => api.papers(filters),
     enabled: ready,
     // Poll while anything is still being indexed (live status without a socket).
-    refetchInterval: (query) =>
-      query.state.data?.items.some((p) => p.status !== "ready" && p.status !== "failed") ? 2000 : false,
+    refetchInterval: (query) => {
+      const pending = query.state.data?.items.some((p) => p.status !== "ready" && p.status !== "failed");
+      if (pending) kickWorker();
+      return pending ? 2000 : false;
+    },
   });
   const collections = useQuery({ queryKey: queryKeys.collections(userId), queryFn: api.collections, enabled: ready });
   const newCollection = useMutation({

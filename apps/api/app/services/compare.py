@@ -198,22 +198,85 @@ def to_markdown(header: list[str], rows: list[list[str]]) -> str:
 
 
 def to_xlsx(header: list[str], rows: list[list[str]]) -> bytes:
-    from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font
+    """Minimal standards-compliant .xlsx (inline strings, bold header, wrapped cells) with the stdlib only."""
+    import zipfile
+    from xml.sax.saxutils import escape
 
-    wb = Workbook()
-    ws = wb.active
-    assert ws is not None
-    ws.title = "Comparison"
-    ws.append(header)
-    for r in rows:
-        ws.append(r)
-    for cell in ws[1]:
-        cell.font = Font(bold=True)
-    for col in ws.columns:
-        ws.column_dimensions[col[0].column_letter].width = 40  # pyright: ignore[reportAttributeAccessIssue]
-        for cell in col:
-            cell.alignment = Alignment(wrap_text=True, vertical="top")
+    def col(i: int) -> str:
+        out = ""
+        i += 1
+        while i:
+            i, r = divmod(i - 1, 26)
+            out = chr(65 + r) + out
+        return out
+
+    def row_xml(r: int, cells: list[str], style: int) -> str:
+        cs = "".join(
+            f'<c r="{col(i)}{r}" t="inlineStr" s="{style}"><is><t xml:space="preserve">{escape(v)}</t></is></c>'
+            for i, v in enumerate(cells)
+        )
+        return f'<row r="{r}">{cs}</row>'
+
+    data = row_xml(1, header, 1) + "".join(row_xml(i + 2, r, 2) for i, r in enumerate(rows))
+    cols = f'<cols><col min="1" max="{len(header)}" width="40" customWidth="1"/></cols>'
+    sheet = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        f"{cols}<sheetData>{data}</sheetData></worksheet>"
+    )
+    styles = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font>'
+        '<font><b/><sz val="11"/><name val="Calibri"/></font></fonts>'
+        '<fills count="2"><fill><patternFill patternType="none"/></fill>'
+        '<fill><patternFill patternType="gray125"/></fill></fills>'
+        '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
+        '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+        '<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+        '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1">'
+        '<alignment wrapText="1" vertical="top"/></xf>'
+        '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1">'
+        '<alignment wrapText="1" vertical="top"/></xf></cellXfs></styleSheet>'
+    )
+    files = {
+        "[Content_Types].xml": (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            '<Default Extension="xml" ContentType="application/xml"/>'
+            '<Override PartName="/xl/workbook.xml" '
+            'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            '<Override PartName="/xl/worksheets/sheet1.xml" '
+            'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+            '<Override PartName="/xl/styles.xml" '
+            'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'
+        ),
+        "_rels/.rels": (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/'
+            'relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'
+        ),
+        "xl/workbook.xml": (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+            'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            '<sheets><sheet name="Comparison" sheetId="1" r:id="rId1"/></sheets></workbook>'
+        ),
+        "xl/_rels/workbook.xml.rels": (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/'
+            'relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+            '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/'
+            'relationships/styles" Target="styles.xml"/></Relationships>'
+        ),
+        "xl/worksheets/sheet1.xml": sheet,
+        "xl/styles.xml": styles,
+    }
     buf = io.BytesIO()
-    wb.save(buf)
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for name, body in files.items():
+            z.writestr(name, body)
     return buf.getvalue()

@@ -17,14 +17,15 @@ from app.jobs.worker import Worker
 from app.logging import configure_logging
 from app.providers.registry import build_providers
 from app.ratelimit import RateLimiter, client_key
-from app.routers import chat, health, jobs, library, me, papers, workspace
+from app.routers import chat, health, jobs, library, me, papers, worker, workspace
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level)
     if settings.sentry_dsn:
-        import sentry_sdk
+        # Optional dependency: `uv add 'sentry-sdk[fastapi]'` where error reporting is wanted.
+        import sentry_sdk  # pyright: ignore[reportMissingImports]
 
         # Errors only, no request bodies or PII (paper text never leaves via Sentry).
         sentry_sdk.init(
@@ -99,6 +100,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(chat.router)
     app.include_router(library.router)
     app.include_router(workspace.router)
+    app.include_router(worker.router)
     return app
 
 

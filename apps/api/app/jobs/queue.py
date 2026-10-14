@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 
 MAX_ATTEMPTS = 3
-STALE_MINUTES = 10
+STALE_MINUTES = 6
 
 _COLS = "id, type, payload, user_id, status, priority, progress, stage, attempts, error, created_at"
 

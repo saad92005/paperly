@@ -11,7 +11,7 @@ import { Dialog, ErrorState, Skeleton } from "@/components/bits";
 import { Matrix } from "@/components/matrix";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { api, downloadFromApi, queryKeys } from "@/lib/api";
+import { api, downloadFromApi, kickWorker, queryKeys } from "@/lib/api";
 
 const SUGGESTIONS: [string, string][] = [
   ["Dataset size", "How large are the datasets used (number of examples/tokens)?"],
@@ -41,7 +41,11 @@ function ComparisonView() {
     queryKey: queryKeys.comparison(userId, id),
     queryFn: () => api.comparison(id),
     enabled: ready,
-    refetchInterval: (query) => (query.state.data && ["queued", "running"].includes(query.state.data.status) ? 2000 : false),
+    refetchInterval: (query) => {
+      const pending = !!query.state.data && ["queued", "running"].includes(query.state.data.status);
+      if (pending) kickWorker();
+      return pending ? 2000 : false;
+    },
   });
   const add = useMutation({
     mutationFn: () => api.addColumn(id, label.trim(), question.trim()),

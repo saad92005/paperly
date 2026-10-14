@@ -86,6 +86,26 @@ export async function apiFetch<T>(
   return (type.includes("json") ? await res.json() : await res.text()) as T;
 }
 
+/**
+ * On serverless hosting the API has no always-on worker: queued jobs (indexing, summaries, comparisons…)
+ * run inside POST /v1/worker/tick. Call this after enqueuing work and while waiting; it is throttled and
+ * fire-and-forget. On container hosting the tick is a cheap no-op.
+ */
+let lastKick = 0;
+export function kickWorker(force = false) {
+  const now = Date.now();
+  if (!force && now - lastKick < 12_000) return;
+  lastKick = now;
+  void rawFetch("/v1/worker/tick", { method: "POST" }).catch(() => undefined);
+}
+
+function kicked<T>(p: Promise<T>): Promise<T> {
+  return p.then((r) => {
+    kickWorker(true);
+    return r;
+  });
+}
+
 const json = (body: unknown): RequestInit => ({ method: "POST", body: JSON.stringify(body) });
 const patch = (body: unknown): RequestInit => ({ method: "PATCH", body: JSON.stringify(body) });
 const del: RequestInit = { method: "DELETE" };
@@ -136,18 +156,20 @@ export const api = {
     apiFetch<Paper>(`/v1/papers/${id}`, patch(p)),
   deletePaper: (id: string) => apiFetch<void>(`/v1/papers/${id}`, del),
   importPaper: (source: "arxiv" | "doi" | "url", value: string, collection_id?: string | null) =>
-    apiFetch<{ paper_id: string; job_id: string | null; status: string }>(
+    kicked(apiFetch<{ paper_id: string; job_id: string | null; status: string }>(
       "/v1/papers/import",
       json({ source, value, collection_id: collection_id || null }),
-    ),
+    )),
   upload: (file: File, collection_id?: string | null) => {
     const fd = new FormData();
     fd.append("file", file);
     if (collection_id) fd.append("collection_id", collection_id);
-    return apiFetch<{ paper_id: string; job_id: string | null; status: string }>("/v1/papers/upload", {
-      method: "POST",
-      body: fd,
-    });
+    return kicked(
+      apiFetch<{ paper_id: string; job_id: string | null; status: string }>("/v1/papers/upload", {
+        method: "POST",
+        body: fd,
+      }),
+    );
   },
   paperFile: async (id: string) => (await rawFetch(`/v1/papers/${id}/file`)).arrayBuffer(),
   chunks: (id: string) => apiFetch<Chunk[]>(`/v1/papers/${id}/chunks`),
@@ -157,7 +179,10 @@ export const api = {
       `/v1/papers/${id}/citations`,
     ),
   cite: (id: string, style: "bibtex" | "apa" | "ieee") => apiFetch<string>(`/v1/papers/${id}/bibtex?style=${style}`),
-  job: (id: string) => apiFetch<Job>(`/v1/jobs/${id}`),
+  job: (id: string) => {
+    kickWorker();
+    return apiFetch<Job>(`/v1/jobs/${id}`);
+  },
 
   collections: () => apiFetch<Collection[]>("/v1/collections"),
   createCollection: (name: string) => apiFetch<Collection>("/v1/collections", json({ name })),
@@ -184,12 +209,12 @@ export const api = {
   summary: (paperId: string, level: Level) =>
     apiFetch<Summary>(`/v1/papers/${paperId}/summary${qs({ kind: "structured", level })}`),
   regenerateSummary: (paperId: string, level: Level) =>
-    apiFetch<{ job_id: string }>(`/v1/papers/${paperId}/summary/regenerate${qs({ level })}`, { method: "POST" }),
+    kicked(apiFetch<{ job_id: string }>(`/v1/papers/${paperId}/summary/regenerate${qs({ level })}`, { method: "POST" })),
   glossary: (paperId: string) =>
     apiFetch<{ terms: GlossaryTerm[] }>(`/v1/papers/${paperId}/summary${qs({ kind: "glossary" })}`),
 
   makeCards: (paperId: string, count: number) =>
-    apiFetch<{ job_id: string }>(`/v1/papers/${paperId}/flashcards`, json({ count })),
+    kicked(apiFetch<{ job_id: string }>(`/v1/papers/${paperId}/flashcards`, json({ count }))),
   cards: (paperId: string) => apiFetch<Flashcard[]>(`/v1/papers/${paperId}/flashcards`),
   due: () => apiFetch<Flashcard[]>("/v1/flashcards/due?limit=50"),
   reviewCard: (id: string, grade: number) => apiFetch<unknown>(`/v1/flashcards/${id}/review`, json({ grade })),
@@ -197,9 +222,9 @@ export const api = {
   comparisons: () => apiFetch<Comparison[]>("/v1/comparisons"),
   comparison: (id: string) => apiFetch<Comparison>(`/v1/comparisons/${id}`),
   createComparison: (paper_ids: string[], title?: string) =>
-    apiFetch<{ comparison_id: string; job_id: string }>("/v1/comparisons", json({ paper_ids, title })),
+    kicked(apiFetch<{ comparison_id: string; job_id: string }>("/v1/comparisons", json({ paper_ids, title }))),
   addColumn: (id: string, label: string, question: string) =>
-    apiFetch<{ job_id: string }>(`/v1/comparisons/${id}/columns`, json({ label, question })),
+    kicked(apiFetch<{ job_id: string }>(`/v1/comparisons/${id}/columns`, json({ label, question }))),
   deleteComparison: (id: string) => apiFetch<void>(`/v1/comparisons/${id}`, del),
 
   discover: (q: string, yearFrom?: number, oaOnly = true) =>
@@ -209,7 +234,7 @@ export const api = {
   publicShare: (id: string) => apiFetch<Record<string, unknown>>(`/v1/share/${id}`, {}, { auth: false }),
 
   startReview: (collectionId: string, topic: string, style: "apa" | "ieee", length: "short" | "long") =>
-    apiFetch<{ job_id: string }>(`/v1/collections/${collectionId}/review`, json({ topic, style, length })),
+    kicked(apiFetch<{ job_id: string }>(`/v1/collections/${collectionId}/review`, json({ topic, style, length }))),
   reviews: () => apiFetch<ReviewItem[]>("/v1/reviews"),
   exportReview: (jobId: string, format: "md" | "tex" | "bib") =>
     apiFetch<string>(`/v1/exports/${jobId}?format=${format}`),
