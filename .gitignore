@@ -35,3 +35,6 @@ Thumbs.db
 !.vscode/extensions.json
 apps/api/.models/
 .tmp_fixtures/
+
+.vercel
+.env*

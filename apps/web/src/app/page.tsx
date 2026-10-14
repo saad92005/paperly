@@ -39,7 +39,7 @@ export default function Home() {
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link href="/login" className={cn(buttonVariants(), "h-12 px-6 text-base")}>Start reading — free</Link>
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ variant: "outline" }), "h-12 px-6 text-base")}>
+            <a href="https://github.com/saad92005/paperly" target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ variant: "outline" }), "h-12 px-6 text-base")}>
               <Code2 aria-hidden /> Source code
             </a>
           </div>

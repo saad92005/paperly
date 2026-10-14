@@ -1,0 +1,8 @@
+apps/api
+**/node_modules
+**/.next
+.tmp_fixtures
+evals
+docs
+.env
+.env.*
