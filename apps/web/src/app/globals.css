@@ -133,3 +133,118 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Long-form AI text (answers, summaries). */
+.prose-paperly {
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.prose-paperly > * + * {
+  margin-top: 0.6em;
+}
+.prose-paperly ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.prose-paperly ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.prose-paperly li + li {
+  margin-top: 0.25em;
+}
+.prose-paperly h1,
+.prose-paperly h2,
+.prose-paperly h3 {
+  font-weight: 600;
+  margin-top: 1em;
+}
+.prose-paperly code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--brand-soft);
+  border-radius: 4px;
+  padding: 0.05em 0.3em;
+}
+.prose-paperly pre code {
+  display: block;
+  padding: 0.75rem;
+  overflow-x: auto;
+}
+.prose-paperly table {
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.prose-paperly th,
+.prose-paperly td {
+  border: 1px solid var(--line);
+  padding: 0.25rem 0.5rem;
+}
+.prose-paperly blockquote {
+  border-left: 3px solid var(--line);
+  padding-left: 0.75rem;
+  color: var(--muted-ink);
+}
+
+/* pdf.js 6 text layer (subset of pdfjs-dist/web/pdf_viewer.css): transparent selectable text. */
+.textLayer {
+  color-scheme: only light;
+  position: absolute;
+  text-align: initial;
+  inset: 0;
+  overflow: clip;
+  line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  z-index: 2;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+.textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  user-select: text;
+}
+.textLayer > :not(.markedContent),
+.textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+.textLayer .markedContent {
+  display: contents;
+}
+.textLayer ::selection {
+  background: rgba(67, 56, 202, 0.3);
+}
+.textLayer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: default;
+  user-select: none;
+}
+
+@keyframes cite-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(67, 56, 202, 0.55); }
+  100% { box-shadow: 0 0 0 10px rgba(67, 56, 202, 0); }
+}
+.cite-pulse {
+  animation: cite-pulse 0.6s ease-out 2;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cite-pulse { animation: none; }
+  html { scroll-behavior: auto !important; }
+}
