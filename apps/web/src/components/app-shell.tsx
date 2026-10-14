@@ -19,7 +19,6 @@ import { useEffect, type ReactNode } from "react";
 import { CommandPalette } from "@/components/command-palette";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { WakingBanner } from "@/components/waking-banner";
 import { authClient } from "@/lib/auth-client";
 import { clearApiToken, useSession } from "@/lib/session";
 import { site } from "@/lib/site";
@@ -61,7 +60,6 @@ export function AppShell({ children, wide = false }: { children: ReactNode; wide
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <WakingBanner />
       <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-line bg-surface/95 px-4 backdrop-blur">
         <Link href="/library" className="flex items-center gap-2 font-semibold tracking-tight">
           <BookOpen className="size-5 text-brand" aria-hidden />
