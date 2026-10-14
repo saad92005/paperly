@@ -2,7 +2,9 @@
 
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import Any, Literal, Protocol
+from typing import Literal, Protocol
+
+Rect = tuple[float, float, float, float]  # x0, top, x1, bottom in PDF points, top-left origin
 
 
 @dataclass
@@ -22,17 +24,39 @@ class Delta:
 class Sentence:
     text: str
     page: int
-    rects: list[tuple[float, float, float, float]] = field(default_factory=lambda: [])
+    rects: list[tuple[int, Rect]] = field(default_factory=lambda: [])  # (page, rect) per line
+
+
+@dataclass
+class Block:
+    """A run of text in one section: body, abstract, caption or reference entry."""
+
+    kind: Literal["abstract", "body", "caption", "table", "equation", "reference"]
+    section_idx: int
+    sentences: list[Sentence] = field(default_factory=lambda: [])
+
+
+@dataclass
+class ParsedSection:
+    heading: str
+    level: int
+    page_start: int
+    page_end: int
 
 
 @dataclass
 class ParsedDocument:
     page_count: int
     title: str | None = None
-    sections: list[dict[str, Any]] = field(default_factory=lambda: [])
-    blocks: list[dict[str, Any]] = field(default_factory=lambda: [])
-    sentences: list[Sentence] = field(default_factory=lambda: [])
+    abstract: str | None = None
+    year: int | None = None
+    doi: str | None = None
+    arxiv_id: str | None = None
+    sections: list[ParsedSection] = field(default_factory=lambda: [])
+    blocks: list[Block] = field(default_factory=lambda: [])
     references: list[str] = field(default_factory=lambda: [])
+    page_sizes: list[tuple[float, float]] = field(default_factory=lambda: [])
+    dropped_lines: int = 0  # headers/footers/invisible lines removed (debug view)
 
 
 @dataclass
@@ -49,24 +73,23 @@ class PaperMetadata:
 
 class LLMProvider(Protocol):
     name: str
+    model: str
 
     def stream_chat(
         self,
         messages: list[Msg],
         *,
-        model: str,
         temperature: float,
         max_tokens: int,
-        json_schema: dict[str, Any] | None = None,
+        json_mode: bool = False,
     ) -> AsyncIterator[Delta]: ...
 
 
 class EmbeddingProvider(Protocol):
     dim: int
+    name: str
 
-    async def embed(
-        self, texts: list[str], *, kind: Literal["query", "doc"]
-    ) -> list[list[float]]: ...
+    async def embed(self, texts: list[str], *, kind: Literal["query", "doc"]) -> list[list[float]]: ...
 
 
 class Reranker(Protocol):
@@ -87,5 +110,5 @@ class MetadataSource(Protocol):
 
 class BlobStore(Protocol):
     async def put(self, path: str, data: bytes, content_type: str) -> None: ...
-    async def signed_url(self, path: str, expires_s: int) -> str: ...
+    async def get(self, path: str) -> bytes | None: ...
     async def delete(self, path: str) -> None: ...

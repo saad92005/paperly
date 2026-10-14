@@ -1,31 +1,33 @@
-"""Deterministic stub providers: used in tests and until real adapters land (Phases 1-2)."""
+"""Deterministic stub providers for tests."""
 
 import hashlib
 import math
 from collections.abc import AsyncIterator
-from typing import Any, Literal
+from typing import Literal
 
 from app.providers.base import Delta, Msg, PaperMetadata, ParsedDocument
 
 
 class StubLLM:
+    """Replays a scripted reply (tests set `reply`); defaults to NOT_FOUND."""
+
     name = "stub"
+    model = "stub-1"
+
+    def __init__(self, reply: str = "NOT_FOUND\nThe stub provider does not answer questions.") -> None:
+        self.reply = reply
 
     async def stream_chat(
-        self,
-        messages: list[Msg],
-        *,
-        model: str,
-        temperature: float,
-        max_tokens: int,
-        json_schema: dict[str, Any] | None = None,
+        self, messages: list[Msg], *, temperature: float, max_tokens: int, json_mode: bool = False
     ) -> AsyncIterator[Delta]:
-        for word in "NOT_FOUND\nThe stub provider does not answer questions.".split(" "):
-            yield Delta(text=word + " ")
-        yield Delta(prompt_tokens=0, completion_tokens=0)
+        for i in range(0, len(self.reply), 7):
+            yield Delta(text=self.reply[i : i + 7])
+        yield Delta(prompt_tokens=10, completion_tokens=10)
 
 
 class StubEmbeddings:
+    name = "stub"
+
     def __init__(self, dim: int) -> None:
         self.dim = dim
 

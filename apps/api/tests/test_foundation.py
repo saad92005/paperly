@@ -34,9 +34,7 @@ def make_token(key: Any = KEY, **overrides: Any) -> str:
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> httpx.AsyncClient:
-    app = create_app(
-        Settings(_env_file=None, database_url="", web_base_url="http://localhost:3000")
-    )  # pyright: ignore[reportCallIssue]
+    app = create_app(Settings(_env_file=None, database_url="", web_base_url="http://localhost:3000"))  # pyright: ignore[reportCallIssue]
     app.state.jwt_test_key = KEY.public_key()
     store: dict[str, Any] = {}
 
@@ -128,9 +126,7 @@ async def test_patch_me_validates_and_updates(client: httpx.AsyncClient) -> None
     bad = await client.patch("/v1/me", json={"explain_level": "genius"}, headers=auth)
     assert bad.status_code == 422
     assert bad.json()["error"]["code"] == "validation_error"
-    ok = await client.patch(
-        "/v1/me", json={"explain_level": "expert", "display_name": "S"}, headers=auth
-    )
+    ok = await client.patch("/v1/me", json={"explain_level": "expert", "display_name": "S"}, headers=auth)
     assert ok.status_code == 200
     assert ok.json()["explain_level"] == "expert"
 

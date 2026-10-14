@@ -1,29 +1,47 @@
-"""Choose provider implementations from settings. Real adapters replace stubs in later phases."""
+"""Choose provider implementations from settings (config-driven, docs/02 §3.4)."""
 
 from dataclasses import dataclass
 
 from app.config import Settings
-from app.providers.base import EmbeddingProvider, LLMProvider, Reranker
+from app.ingest.pdfplumber_parser import PdfPlumberParser
+from app.providers.base import BlobStore, EmbeddingProvider, PdfParser, Reranker
+from app.providers.blobs import PgBlobStore
+from app.providers.llm import LLMRouter, build_llm_router
 from app.providers.stubs import StubEmbeddings, StubLLM, StubReranker
 
 
 @dataclass
 class Providers:
-    llm_chain: list[LLMProvider]
+    llm: LLMRouter
     embeddings: EmbeddingProvider
     reranker: Reranker
+    parser: PdfParser
+    blobs: BlobStore
 
 
 def build_providers(settings: Settings) -> Providers:
-    # Only stubs exist in Phase 0; unknown choices fail loudly rather than silently degrade.
-    if settings.llm_provider_impl != "stub":
-        raise NotImplementedError(f"LLM impl {settings.llm_provider_impl!r} arrives in Phase 2")
-    if settings.embeddings_provider != "stub":
-        raise NotImplementedError(f"Embeddings {settings.embeddings_provider!r} arrive in Phase 1")
-    if settings.reranker != "stub":
-        raise NotImplementedError(f"Reranker {settings.reranker!r} arrives in Phase 2")
+    if settings.llm_provider_impl == "stub":
+        llm = LLMRouter({"stub": StubLLM()}, {"chat": ["stub"]})
+    else:
+        llm = build_llm_router(settings)
+    if settings.embeddings_provider == "fastembed":
+        from app.providers.local import FastEmbedEmbeddings
+
+        embeddings: EmbeddingProvider = FastEmbedEmbeddings(
+            settings.embeddings_model, settings.embeddings_dim, settings.model_cache_dir
+        )
+    else:
+        embeddings = StubEmbeddings(settings.embeddings_dim)
+    if settings.reranker == "flashrank":
+        from app.providers.local import FlashRankReranker
+
+        reranker: Reranker = FlashRankReranker(settings.model_cache_dir)
+    else:
+        reranker = StubReranker()
     return Providers(
-        llm_chain=[StubLLM()],
-        embeddings=StubEmbeddings(settings.embeddings_dim),
-        reranker=StubReranker(),
+        llm=llm,
+        embeddings=embeddings,
+        reranker=reranker,
+        parser=PdfPlumberParser(settings.max_pages_free),
+        blobs=PgBlobStore(),
     )

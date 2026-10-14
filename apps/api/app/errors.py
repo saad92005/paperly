@@ -34,6 +34,14 @@ class NotFound(AppError):
     code, status, message = "not_found", 404, "Not found."
 
 
+class Invalid(AppError):
+    code, status, message = "validation_error", 422, "Some fields are invalid."
+
+
+class RateLimited(AppError):
+    code, status, message = "rate_limited", 429, "Too many requests. Slow down a little."
+
+
 class Conflict(AppError):
     code, status, message = "conflict", 409, "This conflicts with existing data."
 
@@ -54,9 +62,7 @@ _HTTP_CODES = {
 
 def _body(request: Request, code: str, message: str, details: dict[str, Any]) -> dict[str, Any]:
     request_id = getattr(request.state, "request_id", None)
-    return {
-        "error": {"code": code, "message": message, "details": details, "request_id": request_id}
-    }
+    return {"error": {"code": code, "message": message, "details": details, "request_id": request_id}}
 
 
 def install_error_handlers(app: FastAPI) -> None:

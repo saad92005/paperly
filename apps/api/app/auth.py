@@ -47,9 +47,7 @@ def decode_token(token: str, settings: Settings, key: Any = None) -> dict[str, A
     return claims
 
 
-async def current_user(
-    request: Request, settings: Annotated[Settings, Depends(get_settings)]
-) -> CurrentUser:
+async def current_user(request: Request, settings: Annotated[Settings, Depends(get_settings)]) -> CurrentUser:
     header = request.headers.get("authorization", "")
     scheme, _, token = header.partition(" ")
     if scheme.lower() != "bearer" or not token:

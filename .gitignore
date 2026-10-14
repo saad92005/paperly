@@ -33,3 +33,5 @@ eval/outputs/
 Thumbs.db
 .vscode/*
 !.vscode/extensions.json
+apps/api/.models/
+.tmp_fixtures/

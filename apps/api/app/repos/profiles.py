@@ -10,7 +10,7 @@ _COLS = "id, display_name, locale, explain_level, plan, is_admin, created_at"
 _UPDATABLE = ("display_name", "locale", "explain_level")
 # The auth.users trigger normally creates the row; this upsert covers users created before it.
 _UPSERT = text(
-    "insert into profiles (id) values (:id) "  # noqa: S608
+    "insert into profiles (id) values (:id) "
     f"on conflict (id) do update set id = excluded.id returning {_COLS}"
 )
 
@@ -27,7 +27,7 @@ async def update(session: AsyncSession, user_id: UUID, fields: dict[str, Any]) -
     if not allowed:
         return await get_or_create(session, user_id)
     sets = ", ".join(f"{k} = :{k}" for k in allowed)
-    sql = text(f"update profiles set {sets} where id = :id returning {_COLS}")  # noqa: S608
+    sql = text(f"update profiles set {sets} where id = :id returning {_COLS}")
     row = (await session.execute(sql, {**allowed, "id": user_id})).mappings().one()
     await session.commit()
     return dict(row)

@@ -23,9 +23,7 @@ def get_engine() -> AsyncEngine:
         if not url:
             raise RuntimeError("DATABASE_URL is not set")
         # statement_cache_size=0 keeps asyncpg compatible with Supabase's transaction pooler.
-        _engine = create_async_engine(
-            url, pool_pre_ping=True, connect_args={"statement_cache_size": 0}
-        )
+        _engine = create_async_engine(url, pool_pre_ping=True, connect_args={"statement_cache_size": 0})
         _sessionmaker = async_sessionmaker(_engine, expire_on_commit=False)
     return _engine
 

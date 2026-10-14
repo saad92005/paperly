@@ -38,11 +38,17 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_chat_model: str = ""
     ollama_base_url: str = "http://localhost:11434/v1"
-    llm_provider_impl: Literal["stub", "openai_compat"] = "stub"
-    embeddings_provider: Literal["stub", "fastembed", "gemini"] = "stub"
+    ollama_enabled: bool = False
+    ollama_model: str = ""
+    # openai_compat uses every provider that has a key; with no key, chat falls back to
+    # extractive answers (quoted sentences, no generation) so the app still works at $0.
+    llm_provider_impl: Literal["stub", "openai_compat"] = "openai_compat"
+    embeddings_provider: Literal["stub", "fastembed"] = "fastembed"
     embeddings_model: str = "BAAI/bge-small-en-v1.5"
     embeddings_dim: int = 384
-    reranker: Literal["stub", "flashrank"] = "stub"
+    reranker: Literal["stub", "flashrank"] = "flashrank"
+    model_cache_dir: str = str(Path(__file__).resolve().parents[1] / ".models")
+    abstain_threshold: float = 0.15
     pdf_parser_chain: str = "arxiv_html,grobid,pdfplumber"
     grobid_url: str = ""
 
@@ -54,9 +60,14 @@ class Settings(BaseSettings):
     quota_compares_per_day: int = 5
     worker_mode: Literal["inprocess", "off"] = "inprocess"
     worker_concurrency: int = 2
+    rate_limit_per_minute: int = 120
 
     # Observability
     log_level: str = "INFO"
+    sentry_dsn: str = ""
+    langfuse_public_key: str = ""
+    langfuse_secret_key: str = ""
+    langfuse_host: str = "https://cloud.langfuse.com"
     contact_email: str = ""
 
     @property

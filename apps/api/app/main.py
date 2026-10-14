@@ -11,9 +11,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import db
 from app.config import Settings, get_settings
 from app.errors import install_error_handlers
+from app.jobs.handlers import build_handlers
+from app.jobs.worker import Worker
 from app.logging import configure_logging
 from app.providers.registry import build_providers
-from app.routers import health, me
+from app.routers import health, jobs, me, papers
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -22,18 +24,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
-        app.state.providers = build_providers(settings)
-        # The job worker loop arrives in Phase 1; until then it reports "off".
-        app.state.worker_running = False
+        providers = build_providers(settings)
+        app.state.providers = providers
+        app.state.worker = None
+        if settings.worker_mode == "inprocess" and settings.database_url:
+            worker = Worker(build_handlers(providers, settings), settings.worker_concurrency)
+            worker.start()
+            app.state.worker = worker
         yield
+        if app.state.worker is not None:
+            await app.state.worker.stop()
         await db.dispose()
 
     app = FastAPI(title=f"{settings.app_name} API", version=settings.version, lifespan=lifespan)
 
     @app.middleware("http")
-    async def request_id(
-        request: Request, call_next: Callable[[Request], Awaitable[Response]]
-    ) -> Response:
+    async def request_id(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         rid = request.headers.get("x-request-id") or f"req_{uuid.uuid4().hex[:16]}"
         request.state.request_id = rid
         structlog.contextvars.clear_contextvars()
@@ -55,6 +61,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     install_error_handlers(app)
     app.include_router(health.router)
     app.include_router(me.router)
+    app.include_router(papers.router)
+    app.include_router(jobs.router)
     return app
 
 
