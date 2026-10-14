@@ -11,6 +11,7 @@ dependencies = [
     "fastembed>=0.9.0",
     "flashrank>=0.2.10",
     "httpx>=0.28.1",
+    "openpyxl>=3.1.5",
     "pdfplumber>=0.11.10",
     "pydantic-settings>=2.15.0",
     "pyjwt[crypto]>=2.15.1",
@@ -40,7 +41,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "ASYNC", "S", "RUF"]
-ignore = ["S101", "S608", "RUF001", "RUF002", "RUF003"]
+ignore = ["S101", "S608", "E501", "RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S105", "S106"]

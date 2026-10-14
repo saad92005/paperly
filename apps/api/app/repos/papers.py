@@ -68,7 +68,7 @@ async def find_public(
 
 
 async def find_private_by_hash(s: Conn, owner_id: UUID, sha: str) -> dict[str, Any] | None:
-    sql = f"select {PAPER_COLS} from papers p where p.owner_id = :o and p.sha256 = :h and p.visibility = 'private'"  # noqa: E501
+    sql = f"select {PAPER_COLS} from papers p where p.owner_id = :o and p.sha256 = :h and p.visibility = 'private'"
     row = (await s.execute(text(sql), {"o": owner_id, "h": sha})).mappings().first()
     return dict(row) if row else None
 

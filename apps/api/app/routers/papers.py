@@ -21,7 +21,7 @@ from app.schemas.papers import (
     ReferenceOut,
     SectionOut,
 )
-from app.services import ingest, papers
+from app.services import discover, ingest, papers
 
 router = APIRouter(prefix="/v1/papers", tags=["papers"])
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -131,7 +131,16 @@ async def get_chunk(paper_id: UUID, chunk_id: UUID, user: CurrentUserDep, s: Ses
 async def references(paper_id: UUID, user: CurrentUserDep, s: SessionDep) -> list[ReferenceOut]:
     await papers.require_access(s, user, paper_id)
     refs = await repo.references(s, paper_id)
-    return [ReferenceOut(**r) for r in refs]
+    arx, dois, _ = await discover.library_keys(s, user.id)
+    return [
+        ReferenceOut(
+            **r,
+            in_library=bool(
+                (r["arxiv_id"] and r["arxiv_id"] in arx) or (r["doi"] and r["doi"].lower() in dois)
+            ),
+        )
+        for r in refs
+    ]
 
 
 @router.get("/{paper_id}/bibtex", response_class=PlainTextResponse)

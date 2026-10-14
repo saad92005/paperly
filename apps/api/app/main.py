@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 import structlog
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app import db
 from app.config import Settings, get_settings
@@ -15,7 +16,8 @@ from app.jobs.handlers import build_handlers
 from app.jobs.worker import Worker
 from app.logging import configure_logging
 from app.providers.registry import build_providers
-from app.routers import chat, health, jobs, me, papers
+from app.ratelimit import RateLimiter, client_key
+from app.routers import chat, health, jobs, library, me, papers, workspace
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -37,6 +39,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await db.dispose()
 
     app = FastAPI(title=f"{settings.app_name} API", version=settings.version, lifespan=lifespan)
+    limiter = RateLimiter(settings.rate_limit_per_minute)
 
     @app.middleware("http")
     async def request_id(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
@@ -44,8 +47,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         request.state.request_id = rid
         structlog.contextvars.clear_contextvars()
         structlog.contextvars.bind_contextvars(request_id=rid)
+        remaining = None
+        if request.url.path.startswith("/v1/") and request.method != "OPTIONS":
+            ok, remaining, retry = limiter.check(client_key(request))
+            if not ok:
+                return JSONResponse(
+                    {"error": {"code": "rate_limited", "message": "Too many requests. Slow down a little.",
+                               "details": {}, "request_id": rid}},
+                    status_code=429,
+                    headers={"Retry-After": str(retry), "X-Request-ID": rid, "X-RateLimit-Remaining": "0"},
+                )  # fmt: skip
         response = await call_next(request)
         response.headers["X-Request-ID"] = rid
+        if remaining is not None:
+            response.headers["X-RateLimit-Remaining"] = str(remaining)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        if settings.app_env == "prod":
+            response.headers.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
         return response
 
     app.add_middleware(
@@ -54,7 +74,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=["X-Request-ID"],
+        expose_headers=[
+            "X-Request-ID",
+            "X-RateLimit-Remaining",
+            "X-Quota-Questions-Remaining",
+            "Retry-After",
+        ],
     )
     # Routes depend on get_settings; make them see the settings this app was built with.
     app.dependency_overrides[get_settings] = lambda: settings
@@ -64,6 +89,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(papers.router)
     app.include_router(jobs.router)
     app.include_router(chat.router)
+    app.include_router(library.router)
+    app.include_router(workspace.router)
     return app
 
 
