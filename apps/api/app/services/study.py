@@ -150,6 +150,28 @@ def _self_citation(c: dict[str, Any], i: int, n: int) -> dict[str, Any]:
     }  # fmt: skip
 
 
+def normalize_summary(data: Any) -> dict[str, Any]:
+    """Accept the shapes models actually return: string items, int/"[S3]" sources, over-long text."""
+    out: dict[str, Any] = {}
+    src = data if isinstance(data, dict) else {}
+    for key in SECTIONS:
+        items: list[dict[str, Any]] = []
+        raw = src.get(key) or []
+        for it in raw if isinstance(raw, list) else [raw]:
+            if isinstance(it, str):
+                it = {"text": it, "sources": []}
+            if not isinstance(it, dict) or not str(it.get("text", "")).strip():
+                continue
+            sources = it.get("sources") or it.get("source") or []
+            if not isinstance(sources, list):
+                sources = [sources]
+            items.append({"text": str(it["text"]).strip()[:400], "sources": [str(x) for x in sources][:4]})
+        out[key] = items[:4] if key == "tldr" else items[:8]
+    kw = src.get("keywords") or []
+    out["keywords"] = [str(k)[:60] for k in (kw if isinstance(kw, list) else [kw])][:10]
+    return out
+
+
 async def build_summary(
     s: AsyncSession, providers: Providers, paper_id: UUID, lang: str, level: str
 ) -> dict[str, Any]:
@@ -160,7 +182,8 @@ async def build_summary(
     if not providers.llm.available:
         content, model = extractive_summary(chunks), "extractive"
     else:
-        picked = pick_summary_chunks(chunks)
+        # ~3k input tokens: fits free-tier per-minute token limits (e.g. Groq 8k TPM) with room to spare.
+        picked = pick_summary_chunks(chunks, budget_tokens=3000)
         hits = [Hit({**c, "paper_title": paper["title"]}, 0.0, 1.0) for c in picked]
         prompt = prompts.SUMMARY.format(
             level_guidance=prompts.LEVEL_GUIDANCE.get(level, prompts.LEVEL_GUIDANCE["student"]),
@@ -168,12 +191,13 @@ async def build_summary(
             sources=sources_block(hits),
         )
         try:
-            data, model = await llm_json(providers, "summary", prompt, max_tokens=1800)
-            parsed = SummaryOut.model_validate(data)
-        except (ValidationError, GenerationFailed) as exc:
-            raise RetryableError(f"summary output invalid: {exc}") from exc
-        except ProviderError as exc:
-            raise RetryableError(f"providers busy ({exc.status})") from exc
+            data, model = await llm_json(providers, "summary", prompt, max_tokens=1600)
+            parsed = SummaryOut.model_validate(normalize_summary(data))
+        except (ValidationError, GenerationFailed, ProviderError) as exc:
+            # Never leave the user with an error: show the quoted-sentence summary now (not cached),
+            # so the next visit tries the AI again.
+            log.warning("summary_fallback_extractive", reason=type(exc).__name__)
+            return extractive_summary(chunks)
         items = [(it.text, it.sources) for key in SECTIONS for it in getattr(parsed, key)]
         cits = await cite_items(providers, hits, items)
         content = {}

@@ -18,7 +18,7 @@ from app.providers.base import Delta, LLMProvider, Msg
 log = structlog.get_logger()
 
 PRESETS: dict[str, tuple[str, str]] = {
-    "groq": ("https://api.groq.com/openai/v1", "llama-3.3-70b-versatile"),
+    "groq": ("https://api.groq.com/openai/v1", "openai/gpt-oss-120b"),
     "gemini": ("https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.5-flash"),
     "openrouter": ("https://openrouter.ai/api/v1", "meta-llama/llama-3.3-70b-instruct:free"),
     "ollama": ("http://localhost:11434/v1", "llama3.1:8b"),
@@ -54,6 +54,10 @@ class OpenAICompatLLM:
         }
         if json_mode:
             body["response_format"] = {"type": "json_object"}
+        if "gpt-oss" in self.model:
+            # Reasoning models spend max_tokens on hidden reasoning first; keep it short so answers stream fast.
+            body["reasoning_effort"] = "low"
+            body["max_tokens"] = max_tokens + 400
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
         try:
             async with (
@@ -83,7 +87,8 @@ class OpenAICompatLLM:
                     for choice in obj.get("choices") or []:
                         text = (choice.get("delta") or {}).get("content")
                         if text:
-                            yield Delta(text=text)
+                            # Some models (gpt-oss) cite with full-width brackets: 【S1】 -> [S1].
+                            yield Delta(text=text.replace("\u3010", "[").replace("\u3011", "]"))
                     usage = obj.get("usage")
                     if usage:
                         yield Delta(

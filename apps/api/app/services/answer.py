@@ -17,7 +17,8 @@ from app.providers.llm import ProviderError
 from app.providers.registry import Providers
 from app.services.retrieval import Hit
 
-MARK = re.compile(r"\[S(\d+(?:\s*[,;]\s*S?\d+)*)\]")
+# [S3], [S2, S5], and tolerant of model suffixes such as [S3\u2020L4-L6].
+MARK = re.compile(r"\[S(\d+(?:\s*[,;]\s*S?\d+)*)(?:\u2020[^\]]{0,24})?\]")
 HIGHLIGHT_MIN = 0.72  # bge-small cosine; calibrated on the eval set (see docs/07)
 SUPPORT_MIN = 0.62
 NUM = re.compile(r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?\s*(%)?")
